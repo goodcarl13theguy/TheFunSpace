@@ -34,30 +34,6 @@ canvas{position:fixed;inset:0;z-index:1}
 .vignette{position:fixed;inset:0;z-index:2;pointer-events:none;
   background:radial-gradient(ellipse at center,transparent 35%,rgba(10,4,28,.75) 100%)}
 
-/* topbar */
-.topbar{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
-  gap:1rem;padding:.7rem clamp(1rem,4vw,2.5rem);
-  background:rgba(20,10,48,.45);border-bottom:1px solid rgba(255,255,255,.12);
-  backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);
-  box-shadow:0 8px 40px rgba(0,0,0,.3);animation:drop .7s cubic-bezier(.2,1.2,.4,1) both}
-@keyframes drop{from{transform:translateY(-100%)}}
-.topbar::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;
-  background:linear-gradient(90deg,var(--amber),var(--pink),var(--violet),var(--cyan),var(--amber));
-  background-size:200% 100%;animation:shine 8s linear infinite;opacity:.8}
-.brand{display:flex;align-items:center;gap:.7rem;color:var(--ink);text-decoration:none;
-  font-family:var(--display);font-weight:700;font-size:1.3rem;border-radius:.8rem}
-.brand img{width:44px;height:44px;border-radius:30%;filter:drop-shadow(0 4px 14px rgba(255,95,162,.55));
-  transition:transform .4s cubic-bezier(.2,1.6,.4,1)}
-.brand:hover img{transform:rotate(-10deg) scale(1.12)}
-nav{display:flex;gap:.5rem}
-.nav-btn{font-family:var(--display);font-weight:500;font-size:1.05rem;color:var(--ink);text-decoration:none;
-  padding:.55rem 1.3rem;border-radius:999px;border:1px solid rgba(255,255,255,.18);
-  background:rgba(255,255,255,.07);transition:transform .25s cubic-bezier(.2,1.6,.4,1),background .25s,box-shadow .25s}
-.nav-btn:hover{transform:translateY(-2px);background:rgba(255,255,255,.16);box-shadow:0 8px 24px rgba(138,92,255,.45)}
-.nav-btn[aria-current="page"]{background:linear-gradient(120deg,var(--pink),var(--violet));border-color:transparent;
-  box-shadow:0 6px 22px rgba(255,95,162,.4)}
-@media (max-width:420px){.brand span{display:none}}
-
 /* content */
 main{position:relative;z-index:3;padding:2rem;max-width:46rem;display:flex;flex-direction:column;align-items:center;gap:1.4rem}
 .logo{width:clamp(120px,22vw,176px);height:auto;cursor:pointer;border-radius:28%;
@@ -95,16 +71,6 @@ p{font-size:clamp(1.1rem,2.6vw,1.5rem);font-weight:500;color:var(--muted);max-wi
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <canvas id="fx" aria-hidden="true"></canvas>
 <div class="vignette" aria-hidden="true"></div>
-
-<header class="topbar">
-  <a class="brand" href="./" aria-label="The Fun Space home">
-    <img src="logo.svg" alt="" width="44" height="44">
-    <span>The Fun Space</span>
-  </a>
-  <nav aria-label="Main">
-    <a class="nav-btn" href="./" aria-current="page">Home</a>
-  </nav>
-</header>
 
 <main>
   <img class="logo" id="logo" src="logo.svg" alt="The Fun Space logo" width="176" height="176" tabindex="0">
@@ -172,5 +138,6 @@ document.getElementById('logo').addEventListener('keydown',e=>{
   if(e.key==='Enter'||e.key===' '){const r=e.target.getBoundingClientRect();burst(r.left+r.width/2,r.top+r.height/2)}});
 resize();requestAnimationFrame(frame);
 </script>
+<script src="topbar.js"></script>
 </body>
 </html>
