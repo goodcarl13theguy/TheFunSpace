@@ -16,6 +16,8 @@
     // { label: 'Game Night', href: 'game-night.html' },
   ];
   var SITE_NAME = 'The Fun Space';
+  // Paste your Cloudflare Worker URL here (see backend README). Leave '' to disable admin features.
+  var API_URL = 'funspace-api.ethantburke2005-433.workers.dev';
   // --------------------------------------------------------------------
 
   if (document.querySelector('fun-topbar')) return; // never add twice
@@ -34,6 +36,24 @@
 
   function norm(p) { return p.replace(/index\.html$/, '').replace(/\/+$/, ''); }
   var here = norm(location.pathname);
+  var tok = function () { return sessionStorage.getItem('fs_token'); };
+  // Shared helper for pages: FunSpace.call('/api/...', {method, body}) sends the login token.
+  window.FunSpace = {
+    api: API_URL.replace(/\/$/, ''),
+    call: function (path, opt) {
+      opt = opt || {};
+      return fetch(this.api + path, { method: opt.method || 'GET',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (tok() || '') },
+        body: opt.body ? JSON.stringify(opt.body) : undefined
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (d) {
+          if (r.status === 401) { sessionStorage.removeItem('fs_token'); if (!/login\.html$/.test(location.pathname)) location.replace(new URL('login.html', base).href); }
+          if (!r.ok) throw new Error(d.error || 'Request failed');
+          return d;
+        });
+      });
+    }
+  };
 
   var links = PAGES.map(function (p) {
     var url = new URL(p.href, base);
@@ -69,7 +89,10 @@
   .nav-btn:hover{transform:translateY(-2px);background:rgba(255,255,255,.16);box-shadow:0 8px 24px rgba(138,92,255,.45)}
   .nav-btn[aria-current="page"]{background:linear-gradient(120deg,var(--pink),var(--violet));
     border-color:transparent;box-shadow:0 6px 22px rgba(255,95,162,.4)}
-  a:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
+  button.nav-btn{cursor:pointer}
+  .nav-btn.danger{border-color:rgba(255,107,129,.6);color:#ffb3c0}
+  .nav-btn.danger:hover{background:rgba(255,107,129,.25);box-shadow:0 8px 24px rgba(255,107,129,.4)}
+  a:focus-visible,button:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
   @media (max-width:520px){.brand span{display:none}}
   @media (prefers-reduced-motion:reduce){*,*::after{animation:none!important;transition:none!important}}
   `;
@@ -85,6 +108,31 @@
       '<nav aria-label="Main">' + links + '</nav>' +
     '</header>';
   document.body.prepend(host);
+
+  var FS = window.FunSpace;
+  if (FS.api) {
+    // heartbeat so admins can see who is on the site
+    var ping = function () {
+      if (document.hidden) return;
+      fetch(FS.api + '/api/ping', { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ page: location.pathname }), keepalive: true }).catch(function () {});
+    };
+    ping(); setInterval(ping, 30000);
+    // logged in? show Admin Controls + Logout
+    if (tok()) FS.call('/api/me').then(function () {
+      var nav = root.querySelector('nav');
+      var a = document.createElement('a');
+      a.className = 'nav-btn'; a.textContent = 'Admin Controls'; a.href = new URL('admin.html', base).href;
+      if (norm(new URL(a.href).pathname) === here) a.setAttribute('aria-current', 'page');
+      var b = document.createElement('button');
+      b.className = 'nav-btn danger'; b.textContent = 'Logout';
+      b.onclick = function () {
+        FS.call('/api/logout', { method: 'POST' }).catch(function () {}).then(function () {
+          sessionStorage.removeItem('fs_token'); location.href = base.href; });
+      };
+      nav.appendChild(a); nav.appendChild(b);
+    }).catch(function () {});
+  }
 
   // Tell the page how tall the bar is, so content can sit below it:
   //   body { padding-top: var(--topbar-h); }
