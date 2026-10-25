@@ -11,6 +11,7 @@
   // href is relative to the folder that holds topbar.js and logo.svg
   var PAGES = [
     { label: 'Home', href: './' },
+    { label: 'Events', href: 'events.html' },
     { label: 'Beam TMA', href: 'beam-tma.html' }
     // { label: 'Events',     href: 'events.html' },
     // { label: 'Game Night', href: 'game-night.html' },
