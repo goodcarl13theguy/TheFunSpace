@@ -1,0 +1,45 @@
+/* Shared styles for login.html and admin.html */
+:root{--bg:#0f0826;--ink:#fff7ff;--muted:#cbbfee;--pink:#ff5fa2;--amber:#ffb347;--cyan:#4de8ff;--violet:#8a5cff;--bad:#ff6b81;--ok:#5dffb0;
+  --display:"Fredoka","Trebuchet MS",system-ui,sans-serif;--body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box;margin:0}
+body{min-height:100vh;background:var(--bg);color:var(--ink);font-family:var(--body);padding-top:calc(var(--topbar-h,72px) + 1.5rem);padding-bottom:3rem;overflow-x:hidden}
+.aurora{position:fixed;inset:0;overflow:hidden;z-index:-1}
+.aurora i{position:absolute;width:55vmax;height:55vmax;border-radius:50%;filter:blur(90px);opacity:.5;animation:drift 24s ease-in-out infinite alternate}
+.aurora i:nth-child(1){background:var(--violet);left:-15vmax;top:-20vmax}
+.aurora i:nth-child(2){background:var(--pink);right:-20vmax;top:12vmax;animation-delay:-8s}
+.aurora i:nth-child(3){background:var(--cyan);left:20vmax;bottom:-35vmax;opacity:.3;animation-delay:-14s}
+@keyframes drift{to{transform:translate(10vmax,8vmax) scale(1.2) rotate(30deg)}}
+h1,h2{font-family:var(--display)}
+.grad{background:linear-gradient(100deg,var(--amber),var(--pink),var(--violet),var(--cyan),var(--amber));background-size:250% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 8s linear infinite}
+@keyframes shine{to{background-position:-250% 0}}
+.card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:1.5rem;padding:1.6rem;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 20px 60px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.12);
+  animation:rise .7s cubic-bezier(.2,1.2,.4,1) both}
+@keyframes rise{from{transform:translateY(24px);opacity:0}}
+label{display:block;font-weight:700;font-size:.9rem;color:var(--muted);margin:1rem 0 .35rem}
+input,select{width:100%;font:inherit;font-weight:600;color:var(--ink);padding:.8rem 1rem;border-radius:.9rem;
+  background:rgba(8,3,26,.55);border:1.5px solid rgba(255,255,255,.18);outline:none;transition:border-color .2s,box-shadow .2s}
+select option{background:#1a0f40}
+input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 4px rgba(77,232,255,.2)}
+.btn{font-family:var(--display);font-weight:700;font-size:1.05rem;color:#fff;cursor:pointer;border:0;border-radius:999px;padding:.8rem 1.6rem;
+  background:linear-gradient(120deg,var(--pink),var(--violet));box-shadow:0 8px 26px rgba(255,95,162,.4);transition:transform .2s cubic-bezier(.2,1.6,.4,1),box-shadow .2s,opacity .2s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(255,95,162,.55)}
+.btn:disabled{opacity:.5;pointer-events:none}
+.btn.ghost{background:rgba(255,255,255,.1);box-shadow:none;border:1px solid rgba(255,255,255,.2)}
+.btn.sm{font-size:.85rem;padding:.4rem .9rem}.btn.danger{background:rgba(255,107,129,.2);box-shadow:none;border:1px solid var(--bad);color:var(--bad)}
+.msg{min-height:1.4rem;margin-top:.9rem;font-weight:700;color:var(--bad);font-size:.95rem}.msg.ok{color:var(--ok)}
+.shake{animation:shake .4s}@keyframes shake{25%{translate:-8px}75%{translate:8px}}
+.badge{display:inline-block;font-size:.78rem;font-weight:800;padding:.2rem .7rem;border-radius:999px;background:rgba(138,92,255,.35);border:1px solid var(--violet)}
+.badge.l4{background:rgba(255,179,71,.25);border-color:var(--amber);color:var(--amber)}
+.badge.l3{background:rgba(255,95,162,.25);border-color:var(--pink)}.badge.l1{background:rgba(77,232,255,.2);border-color:var(--cyan)}
+.dot{display:inline-block;width:.6rem;height:.6rem;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:pulse 1.8s infinite}
+@keyframes pulse{50%{scale:1.5;opacity:.6}}
+.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:.95rem}
+th{text-align:left;color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;padding:.5rem .7rem}
+td{padding:.65rem .7rem;border-top:1px solid rgba(255,255,255,.1);white-space:nowrap}
+tr.row{animation:rise .4s both}.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.toast{position:fixed;left:50%;bottom:1.5rem;translate:-50% 0;padding:.8rem 1.4rem;border-radius:999px;font-weight:700;background:#1d1250;border:1px solid var(--ok);
+  box-shadow:0 10px 40px rgba(0,0,0,.5);animation:rise .4s both;z-index:50}.toast.bad{border-color:var(--bad)}
+:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

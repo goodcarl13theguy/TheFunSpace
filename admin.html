@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Admin Controls - The Fun Space</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="auth.css">
+<style>
+.wrap{width:min(72rem,94vw);margin:0 auto}
+.head{display:flex;flex-wrap:wrap;align-items:center;gap:.8rem 1.2rem;margin-bottom:1.4rem}
+.head h1{font-size:clamp(1.9rem,5vw,2.8rem)}
+.grid{display:grid;gap:1.4rem;grid-template-columns:1fr}
+@media(min-width:960px){.grid.two{grid-template-columns:1.25fr 1fr}}
+.card h2{font-size:1.4rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.count{margin-left:auto;font-size:.95rem;color:var(--muted);font-family:var(--body);font-weight:700}
+.empty{color:var(--muted);padding:1rem .2rem}.hint{font-size:.82rem;color:var(--muted);margin-top:.5rem;line-height:1.5}
+.row2{display:flex;gap:.6rem}.row2 .btn{white-space:nowrap}
+</style></head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="wrap" id="app" hidden>
+  <div class="head"><h1 class="grad">Admin Controls</h1><span id="who" class="badge"></span></div>
+  <div class="grid two" id="grid">
+    <section class="card"><h2><i class="dot"></i> Live viewers <span class="count" id="vcount"></span></h2>
+      <div class="scroll"><table><thead><tr><th>IP address</th><th>Page</th><th>Browser</th><th>Here for</th></tr></thead><tbody id="vbody"></tbody></table></div>
+      <p class="empty" id="vempty" hidden>Nobody else is on the site right now.</p>
+      <p class="hint" id="vhint"></p></section>
+    <section class="card" id="acc" hidden><h2>Admin accounts</h2>
+      <div class="scroll"><table><thead><tr><th>Name</th><th>Level</th><th></th></tr></thead><tbody id="abody"></tbody></table></div>
+      <form id="af" autocomplete="off">
+        <label for="an">New admin name</label><input id="an" maxlength="24" required pattern="[A-Za-z0-9_]{3,24}" placeholder="letters, numbers, _">
+        <label for="ap">Password (12+ characters)</label>
+        <div class="row2"><input id="ap" type="text" minlength="12" maxlength="128" required autocomplete="new-password"><button type="button" class="btn ghost sm" id="gen">Generate</button></div>
+        <label for="al">Permission level</label><select id="al"></select>
+        <p class="hint"><b>1 Moderator</b> sees viewers (IPs partly hidden) &middot; <b>2 Admin</b> sees full IPs &middot; <b>3 Super Admin</b> also manages accounts below their level &middot; <b>4 Owner</b> is you.</p>
+        <button class="btn" id="ab" style="margin-top:1rem">Add admin</button><div class="msg" id="am" role="alert"></div>
+      </form></section>
+  </div>
+</div>
+<script src="topbar.js"></script>
+<script>
+const $=id=>document.getElementById(id),F=window.FunSpace;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LV={1:'Moderator',2:'Admin',3:'Super Admin',4:'Owner'};let me;
+function toast(t,bad){const d=document.createElement('div');d.className='toast'+(bad?' bad':'');d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2800)}
+const browser=u=>{u=u||'';const b=/Edg\//.test(u)?'Edge':/OPR\//.test(u)?'Opera':/Firefox\//.test(u)?'Firefox':/Chrome\//.test(u)?'Chrome':/Safari\//.test(u)?'Safari':'Other';
+  const o=/Windows/.test(u)?'Windows':/iPhone|iPad/.test(u)?'iOS':/Android/.test(u)?'Android':/Mac OS/.test(u)?'macOS':/Linux/.test(u)?'Linux':'';return b+(o?' / '+o:'')};
+const ago=ms=>{const s=Math.max(0,Math.round(ms/1000));return s<60?s+'s':s<3600?Math.floor(s/60)+'m':Math.floor(s/3600)+'h '+Math.floor(s%3600/60)+'m'};
+
+async function viewers(){
+  try{const d=await F.call('/api/viewers');
+    $('vcount').textContent=d.viewers.length+' online';$('vempty').hidden=d.viewers.length>0;
+    $('vbody').innerHTML=d.viewers.map(v=>`<tr class="row"><td class="mono">${esc(v.ip)}</td><td>${esc(v.page)}</td><td>${esc(browser(v.ua))}</td><td>${ago(d.now-v.first)}</td></tr>`).join('');
+  }catch(e){}
+}
+async function admins(){
+  const d=await F.call('/api/admins');
+  $('abody').innerHTML=d.admins.map(a=>`<tr class="row"><td>${esc(a.name)}</td><td><span class="badge l${a.level}">${esc(LV[a.level])}</span></td>
+    <td>${a.level<me.level?`<button class="btn danger sm" data-del="${esc(a.name)}">Remove</button>`:''}</td></tr>`).join('');
+}
+$('abody').onclick=async e=>{const n=e.target.dataset.del;if(!n||!confirm('Remove admin "'+n+'"?'))return;
+  try{await F.call('/api/admins/'+encodeURIComponent(n),{method:'DELETE'});toast('Removed '+n);admins()}catch(x){toast(x.message,1)}};
+$('gen').onclick=()=>{const c='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*';
+  $('ap').value=[...crypto.getRandomValues(new Uint8Array(18))].map(x=>c[x%c.length]).join('')};
+$('af').onsubmit=async e=>{e.preventDefault();$('am').textContent='';$('am').className='msg';$('ab').disabled=true;
+  try{await F.call('/api/admins',{method:'POST',body:{name:$('an').value.trim(),password:$('ap').value,level:+$('al').value}});
+    toast('Added '+$('an').value.trim()+' - share their password privately');$('am').className='msg ok';$('am').textContent='Account created.';$('af').reset();admins()}
+  catch(x){$('am').textContent=x.message}finally{$('ab').disabled=false}};
+
+(async()=>{
+  if(!F.api||!sessionStorage.getItem('fs_token'))return location.replace('login.html');
+  try{me=await F.call('/api/me')}catch{return location.replace('login.html')}
+  $('who').textContent=me.name+' · '+me.levelName;$('who').className='badge l'+me.level;
+  $('vhint').textContent=me.level>=2?'Visitors on the same network can appear as one IP.':'Your level sees partly hidden IPs.';
+  if(me.level>=3){$('acc').hidden=false;
+    $('al').innerHTML=Object.keys(LV).filter(l=>l<me.level).map(l=>`<option value="${l}">${l} - ${LV[l]}</option>`).join('');admins()}
+  else $('grid').classList.remove('two');
+  $('app').hidden=false;viewers();setInterval(()=>{if(!document.hidden)viewers()},8000);
+})();
+</script></body></html>
