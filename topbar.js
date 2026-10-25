@@ -17,7 +17,7 @@
   ];
   var SITE_NAME = 'The Fun Space';
   // Paste your Cloudflare Worker URL here (see backend README). Leave '' to disable admin features.
-  var API_URL = 'funspace-api.ethantburke2005-433.workers.dev';
+  var API_URL = 'https://funspace-api.ethantburke2005-433.workers.dev';
   // --------------------------------------------------------------------
 
   if (document.querySelector('fun-topbar')) return; // never add twice
