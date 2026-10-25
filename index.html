@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Fun Space</title>
+<meta name="description" content="Fun space to do random stuff and plan events (game night etc..)">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f0826; --ink:#fff7ff; --muted:#cbbfee;
+  --pink:#ff5fa2; --amber:#ffb347; --cyan:#4de8ff; --violet:#8a5cff;
+  --display:"Fredoka","Trebuchet MS",system-ui,sans-serif;
+  --body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);overflow:hidden;
+  display:grid;place-items:center;text-align:center}
+
+/* animated background */
+.aurora{position:fixed;inset:0;overflow:hidden;z-index:0}
+.aurora i{position:absolute;width:60vmax;height:60vmax;border-radius:50%;filter:blur(90px);opacity:.55;
+  animation:drift 22s ease-in-out infinite alternate}
+.aurora i:nth-child(1){background:var(--violet);left:-15vmax;top:-20vmax}
+.aurora i:nth-child(2){background:var(--pink);right:-20vmax;top:10vmax;animation-duration:27s;animation-delay:-8s}
+.aurora i:nth-child(3){background:var(--cyan);left:15vmax;bottom:-35vmax;opacity:.35;animation-duration:31s;animation-delay:-14s}
+.aurora i:nth-child(4){background:var(--amber);right:5vmax;bottom:-40vmax;opacity:.25;animation-duration:25s;animation-delay:-4s}
+@keyframes drift{to{transform:translate(12vmax,8vmax) scale(1.25) rotate(40deg)}}
+canvas{position:fixed;inset:0;z-index:1}
+.vignette{position:fixed;inset:0;z-index:2;pointer-events:none;
+  background:radial-gradient(ellipse at center,transparent 35%,rgba(10,4,28,.75) 100%)}
+
+/* content */
+main{position:relative;z-index:3;padding:2rem;max-width:46rem;display:flex;flex-direction:column;align-items:center;gap:1.4rem}
+.logo{width:clamp(120px,22vw,176px);height:auto;cursor:pointer;border-radius:28%;
+  filter:drop-shadow(0 12px 40px rgba(255,95,162,.55));
+  animation:pop 1s cubic-bezier(.2,1.5,.4,1) both, bob 5s ease-in-out 1s infinite;
+  transition:transform .4s cubic-bezier(.2,1.6,.4,1)}
+.logo:hover{transform:rotate(-8deg) scale(1.12)}
+.logo:active{transform:scale(.92)}
+@keyframes pop{from{transform:scale(.2) rotate(-40deg);opacity:0}}
+@keyframes bob{50%{translate:0 -12px}}
+
+h1{font-family:var(--display);font-weight:700;line-height:1;letter-spacing:-.01em;
+  font-size:clamp(2.8rem,10vw,6.5rem);
+  background:linear-gradient(100deg,var(--amber),var(--pink),var(--violet),var(--cyan),var(--amber));
+  background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:shine 8s linear infinite;
+  filter:drop-shadow(0 6px 28px rgba(138,92,255,.5))}
+@keyframes shine{to{background-position:-250% 0}}
+h1 span{display:inline-block;animation:letter .8s cubic-bezier(.2,1.6,.4,1) both;animation-delay:calc(var(--i)*55ms + .5s)}
+@keyframes letter{from{transform:translateY(.6em) rotate(8deg);opacity:0}}
+
+p{font-size:clamp(1.1rem,2.6vw,1.5rem);font-weight:500;color:var(--muted);max-width:30ch;line-height:1.5;
+  padding:.9rem 1.6rem;border-radius:1.4rem;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 10px 50px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12)}
+.hint{font-size:.9rem;opacity:.6}
+
+:focus-visible{outline:3px solid var(--cyan);outline-offset:4px}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+
+<main>
+  <img class="logo" id="logo" src="logo.svg" alt="The Fun Space logo" width="176" height="176" tabindex="0">
+  <h1 id="title" aria-label="The Fun Space">The Fun Space</h1>
+  <p>Fun space to do random stuff and plan events(game night etc..)</p>
+  <div class="hint">Click anywhere for a sparkle burst</div>
+</main>
+
+<script>
+// split title into letters
+const t=document.getElementById('title');
+t.innerHTML=[...t.textContent].map((c,i)=>c===' '?' ':`<span style="--i:${i}" aria-hidden="true">${c}</span>`).join('');
+
+const cv=document.getElementById('fx'),ctx=cv.getContext('2d');
+const still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cols=['#ff5fa2','#ffb347','#4de8ff','#8a5cff','#fff6c9'];
+let W,H,dpr,floaters=[],bursts=[],mouse={x:-999,y:-999};
+
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+  cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  const n=Math.round(Math.min(70,W*H/16000));
+  floaters=Array.from({length:n},()=>mk(true));}
+function mk(init){return{x:Math.random()*W,y:init?Math.random()*H:H+30,
+  s:6+Math.random()*16,v:.15+Math.random()*.5,r:Math.random()*6.28,
+  vr:(Math.random()-.5)*.02,c:cols[Math.random()*cols.length|0],
+  k:Math.random()*4|0,ph:Math.random()*6.28,a:.35+Math.random()*.5}}
+
+function shape(k,s){
+  ctx.beginPath();
+  if(k===0){ctx.arc(0,0,s/2,0,6.28)}                       // dot
+  else if(k===1){for(let i=0;i<8;i++){const a=i*Math.PI/4,r=i%2?s*.18:s*.6;ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r)}ctx.closePath()} // sparkle
+  else if(k===2){ctx.moveTo(0,-s/2);ctx.lineTo(s/2,s/2);ctx.lineTo(-s/2,s/2);ctx.closePath()} // triangle
+  else{ctx.roundRect(-s/2,-s/2,s,s,s*.25)}                  // die-ish square
+  ctx.fill();
+  if(k===3){ctx.fillStyle='rgba(15,8,38,.7)';[[-.18,-.18],[.18,.18]].forEach(([x,y])=>{ctx.beginPath();ctx.arc(x*s,y*s,s*.09,0,6.28);ctx.fill()})}
+}
+
+function frame(t){
+  ctx.clearRect(0,0,W,H);
+  for(const f of floaters){
+    f.y-=f.v;f.r+=f.vr;f.x+=Math.sin(t/1500+f.ph)*.3;
+    const dx=f.x-mouse.x,dy=f.y-mouse.y,d=Math.hypot(dx,dy);
+    if(d<140){f.x+=dx/d*(140-d)*.04;f.y+=dy/d*(140-d)*.04}
+    if(f.y<-30){Object.assign(f,mk(false))}
+    ctx.save();ctx.translate(f.x,f.y);ctx.rotate(f.r);
+    ctx.globalAlpha=f.a;ctx.fillStyle=f.c;ctx.shadowColor=f.c;ctx.shadowBlur=14;
+    shape(f.k,f.s);ctx.restore();
+  }
+  for(let i=bursts.length-1;i>=0;i--){
+    const b=bursts[i];b.vy+=.12;b.x+=b.vx;b.y+=b.vy;b.life-=.016;b.r+=.1;
+    if(b.life<=0){bursts.splice(i,1);continue}
+    ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.r);
+    ctx.globalAlpha=b.life;ctx.fillStyle=b.c;ctx.shadowColor=b.c;ctx.shadowBlur=18;
+    shape(1,b.s);ctx.restore();
+  }
+  if(!still)requestAnimationFrame(frame);
+}
+function burst(x,y){
+  for(let i=0;i<26;i++){const a=Math.random()*6.28,sp=2+Math.random()*6;
+    bursts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-3,s:8+Math.random()*14,
+      c:cols[Math.random()*cols.length|0],life:1,r:0})}
+  if(still)requestAnimationFrame(frame);
+}
+addEventListener('resize',resize);
+addEventListener('pointermove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
+addEventListener('pointerdown',e=>burst(e.clientX,e.clientY));
+document.getElementById('logo').addEventListener('keydown',e=>{
+  if(e.key==='Enter'||e.key===' '){const r=e.target.getBoundingClientRect();burst(r.left+r.width/2,r.top+r.height/2)}});
+resize();requestAnimationFrame(frame);
+</script>
+</body>
+</html>
