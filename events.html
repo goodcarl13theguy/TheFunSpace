@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Events - The Fun Space</title>
+<meta name="description" content="Upcoming and active events across our Discord servers">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="auth.css">
+<style>
+.wrap{width:min(74rem,94vw);margin:0 auto}
+.top{text-align:center;margin-bottom:2rem}
+.top h1{font-size:clamp(2.4rem,7vw,4.2rem);line-height:1.05;padding-bottom:.1em}.top p{color:var(--muted);font-weight:600;margin-top:.5rem;font-size:1.1rem}
+.cards{display:grid;gap:1.4rem;grid-template-columns:repeat(auto-fill,minmax(min(100%,21rem),1fr))}
+.ev{position:relative;display:flex;flex-direction:column;gap:1rem;animation-delay:calc(var(--i)*80ms);transition:transform .3s cubic-bezier(.2,1.4,.4,1),box-shadow .3s}
+.ev:hover{transform:translateY(-6px);box-shadow:0 26px 70px rgba(138,92,255,.4),inset 0 1px 0 rgba(255,255,255,.15)}
+.ev.live{border-color:transparent;background:linear-gradient(rgba(26,12,64,.85),rgba(26,12,64,.85)) padding-box,linear-gradient(120deg,var(--ok),var(--cyan),var(--pink),var(--ok)) border-box;background-size:auto,300% 100%;animation:rise .7s cubic-bezier(.2,1.2,.4,1) both,flow 6s linear infinite}
+@keyframes flow{to{background-position:0 0,-300% 0}}
+.srv{display:flex;align-items:center;gap:.7rem}
+.srv img,.srv .ph{width:46px;height:46px;border-radius:30%;flex:none;object-fit:cover;border:2px solid rgba(255,255,255,.7);box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.srv .ph{display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:1.2rem;background:linear-gradient(135deg,var(--violet),var(--pink))}
+.srv b{font-weight:800;line-height:1.2;overflow-wrap:anywhere}
+.pill{margin-left:auto;flex:none;font-size:.75rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:.3rem .8rem;border-radius:999px;background:rgba(77,232,255,.18);border:1px solid var(--cyan);color:var(--cyan);display:inline-flex;align-items:center;gap:.4rem}
+.live .pill{background:rgba(93,255,176,.18);border-color:var(--ok);color:var(--ok)}
+.main{display:flex;gap:1rem;align-items:center}
+.tile{flex:none;width:64px;border-radius:1rem;overflow:hidden;text-align:center;background:#fff;color:#1a0f40;box-shadow:0 8px 22px rgba(0,0,0,.4)}
+.tile i{display:block;font-style:normal;font-size:.7rem;font-weight:800;letter-spacing:.1em;background:linear-gradient(120deg,var(--pink),var(--violet));color:#fff;padding:.2rem 0}
+.tile span{display:block;font-family:var(--display);font-weight:700;font-size:1.9rem;line-height:1.3}
+.ev h2{font-size:1.5rem;line-height:1.15;overflow-wrap:anywhere}
+.when{color:var(--muted);font-weight:700;font-size:.92rem;margin-top:.25rem;line-height:1.4}
+.desc{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55;color:#eee6ff;border-top:1px solid rgba(255,255,255,.12);padding-top:.9rem}
+.cd{margin-top:auto;font-weight:800;font-size:.9rem;color:var(--amber)}.live .cd{color:var(--ok)}
+.state{text-align:center;color:var(--muted);font-weight:700;padding:3rem 1rem;font-size:1.15rem}
+.sk{height:15rem;border-radius:1.5rem;background:linear-gradient(100deg,rgba(255,255,255,.05) 30%,rgba(255,255,255,.14) 50%,rgba(255,255,255,.05) 70%);background-size:300% 100%;animation:sk 1.4s linear infinite}
+@keyframes sk{to{background-position:-300% 0}}
+</style></head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="wrap">
+  <div class="top"><h1 class="grad">Events</h1><p>Upcoming and active events across our servers</p></div>
+  <div class="cards" id="cards" aria-live="polite"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
+</div>
+<script src="topbar.js"></script>
+<script>
+const F=window.FunSpace,$=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const info={};  // live server name + logo from Discord (cached per invite)
+const srv=c=>info[c]||(info[c]=fetch('https://discord.com/api/v10/invites/'+encodeURIComponent(c)).then(r=>r.ok?r.json():Promise.reject()).then(d=>{const g=d.guild||{};
+  return{name:g.name||'Discord server',icon:g.icon?`https://cdn.discordapp.com/icons/${g.id}/${g.icon}.${g.icon.startsWith('a_')?'gif':'png'}?size=128`:null}}).catch(()=>({name:'Discord server',icon:null})));
+let events=[],skew=0;
+const rel=ms=>{const m=Math.max(1,Math.round(ms/60000)),d=Math.floor(m/1440),h=Math.floor(m%1440/60);
+  return d?`${d}d ${h}h`:h?`${h}h ${m%60}m`:`${m}m`};
+function card(v,i,s){
+  const t=Date.now()+skew,live=v.starts<=t,a=new Date(v.starts),b=new Date(v.ends);
+  const day=a.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const tm=a.toLocaleTimeString([],{hour:'numeric',minute:'2-digit',timeZoneName:'short'});
+  const end=b.toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'});
+  const logo=s.icon?`<img src="${esc(s.icon)}" alt="" width="46" height="46" loading="lazy">`:`<div class="ph" aria-hidden="true">${esc(s.name.trim().charAt(0).toUpperCase())}</div>`;
+  return `<article class="card ev${live?' live':''}" style="--i:${i}">
+    <div class="srv">${logo}<b>${esc(s.name)}</b><span class="pill">${live?'<i class="dot"></i>Live now':'Upcoming'}</span></div>
+    <div class="main"><div class="tile" aria-hidden="true"><i>${esc(a.toLocaleDateString([],{month:'short'}).toUpperCase())}</i><span>${a.getDate()}</span></div>
+      <div><h2>${esc(v.name)}</h2><div class="when">${esc(day)}<br>${esc(tm)} &middot; ends ${esc(end)}</div></div></div>
+    ${v.description?`<div class="desc">${esc(v.description)}</div>`:''}
+    <div class="cd">${live?'Ends in '+rel(v.ends-t):'Starts in '+rel(v.starts-t)}</div></article>`;
+}
+async function draw(){
+  const list=events.filter(v=>v.ends>Date.now()+skew);
+  if(!list.length){$('cards').innerHTML='<div class="state" style="grid-column:1/-1">No upcoming events right now. Check back soon!</div>';return}
+  const s=await Promise.all(list.map(v=>srv(v.server)));
+  $('cards').innerHTML=list.map((v,i)=>card(v,i,s[i])).join('');
+}
+async function load(first){
+  if(!F.api){$('cards').innerHTML='<div class="state" style="grid-column:1/-1">The events backend is not connected yet.</div>';return}
+  try{const r=await fetch(F.api+'/api/events');if(!r.ok)throw 0;const d=await r.json();events=d.events;skew=d.now-Date.now();await draw()}
+  catch{if(first)$('cards').innerHTML='<div class="state" style="grid-column:1/-1">Could not load events. Try again in a moment.</div>'}
+}
+load(true);setInterval(()=>load(false),60000);setInterval(()=>{if(events.length&&!document.hidden){const y=scrollY;draw().then(()=>scrollTo(0,y))}},30000);
+</script></body></html>
