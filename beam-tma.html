@@ -10,46 +10,53 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@500;700&display=swap" rel="stylesheet">
 <style>
+/* Theme colors. These defaults are replaced by colors read from the server icon. */
+@property --c1{syntax:"<color>";inherits:true;initial-value:#2447e0}  /* main color   */
+@property --c2{syntax:"<color>";inherits:true;initial-value:#41e03a}  /* second color */
+@property --c3{syntax:"<color>";inherits:true;initial-value:#4f78ff}  /* third color  */
+@property --bg{syntax:"<color>";inherits:true;initial-value:#08113a}  /* dark backdrop */
 :root{
-  /* palette taken from the Beam TMA server icon */
-  --navy:#08113a; --blue:#2447e0; --sky:#4f78ff; --lime:#41e03a; --lime-d:#1fae2a; --white:#ffffff;
+  transition:--c1 1.2s ease,--c2 1.2s ease,--c3 1.2s ease,--bg 1.2s ease;
+  --white:#ffffff;
   --display:"Fredoka","Trebuchet MS",system-ui,sans-serif;
   --body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 *{box-sizing:border-box;margin:0}
 html,body{height:100%}
-body{background:var(--navy);color:var(--white);font-family:var(--body);overflow:hidden;
+body{background:var(--bg);color:var(--white);font-family:var(--body);overflow:hidden;
   display:grid;place-items:center;text-align:center;padding-top:var(--topbar-h,72px)}
 
-/* background: spinning burst like the icon + glowing orbs */
+/* background: spinning burst + glowing orbs, all in the icon's colors */
 .burst{position:fixed;left:50%;top:50%;width:220vmax;height:220vmax;translate:-50% -50%;z-index:0;
-  background:repeating-conic-gradient(from 0deg,rgba(65,224,58,.22) 0 9deg,rgba(255,255,255,.07) 9deg 18deg);
+  background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--c2) 24%,transparent) 0 9deg,rgba(255,255,255,.07) 9deg 18deg);
   -webkit-mask-image:radial-gradient(circle,#000 0,transparent 38%);mask-image:radial-gradient(circle,#000 0,transparent 38%);
   animation:spin 80s linear infinite}
 @keyframes spin{to{rotate:360deg}}
 .orbs{position:fixed;inset:0;overflow:hidden;z-index:0}
 .orbs i{position:absolute;width:55vmax;height:55vmax;border-radius:50%;filter:blur(90px);opacity:.5;animation:drift 24s ease-in-out infinite alternate}
-.orbs i:nth-child(1){background:var(--blue);left:-15vmax;top:-18vmax}
-.orbs i:nth-child(2){background:var(--lime-d);right:-20vmax;bottom:-25vmax;opacity:.38;animation-duration:30s;animation-delay:-9s}
-.orbs i:nth-child(3){background:var(--sky);right:5vmax;top:-30vmax;opacity:.3;animation-duration:27s;animation-delay:-14s}
+.orbs i:nth-child(1){background:var(--c1);left:-15vmax;top:-18vmax}
+.orbs i:nth-child(2){background:var(--c2);right:-20vmax;bottom:-25vmax;opacity:.38;animation-duration:30s;animation-delay:-9s}
+.orbs i:nth-child(3){background:var(--c3);right:5vmax;top:-30vmax;opacity:.3;animation-duration:27s;animation-delay:-14s}
 @keyframes drift{to{transform:translate(10vmax,8vmax) scale(1.25)}}
-.vignette{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 40%,rgba(4,8,30,.8) 100%)}
+.vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse at center,transparent 40%,color-mix(in srgb,var(--bg) 80%,#000) 100%)}
 
 main{position:relative;z-index:2;padding:1.5rem;display:flex;flex-direction:column;align-items:center;gap:1.3rem}
 
 /* logo (fetched live from Discord) */
 .logo-wrap{perspective:700px}
 .logo{display:block;width:clamp(150px,26vw,230px);height:auto;aspect-ratio:1;border-radius:26%;
-  border:5px solid var(--white);background:var(--blue);
-  box-shadow:0 0 0 6px rgba(65,224,58,.55),0 20px 70px rgba(65,224,58,.45),0 0 120px rgba(36,71,224,.7);
+  border:5px solid var(--white);background:var(--c1);
+  box-shadow:0 0 0 6px color-mix(in srgb,var(--c2) 55%,transparent),
+             0 20px 70px color-mix(in srgb,var(--c2) 45%,transparent),
+             0 0 120px color-mix(in srgb,var(--c1) 70%,transparent);
   animation:pop .9s cubic-bezier(.2,1.5,.4,1) both, bob 5s ease-in-out 1s infinite;
-  transition:transform .15s ease-out,box-shadow .3s;transform-style:preserve-3d}
-.logo:hover{box-shadow:0 0 0 6px rgba(255,255,255,.8),0 20px 80px rgba(65,224,58,.7),0 0 140px rgba(79,120,255,.9)}
+  transition:transform .15s ease-out;transform-style:preserve-3d}
 @keyframes pop{from{scale:.3;rotate:-30deg;opacity:0}}
 @keyframes bob{50%{translate:0 -12px}}
 
 h1{font-family:var(--display);font-weight:700;line-height:1;font-size:clamp(2.6rem,9vw,5.5rem);
-  background:linear-gradient(100deg,var(--white),var(--lime),var(--sky),var(--white),var(--lime));
+  background:linear-gradient(100deg,var(--white),var(--c2),var(--c3),var(--white),var(--c2));
   background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
   animation:shine 7s linear infinite,rise .9s cubic-bezier(.2,1.4,.4,1) .35s both;padding-bottom:.08em}
 @keyframes shine{to{background-position:-250% 0}}
@@ -58,18 +65,10 @@ h1{font-family:var(--display);font-weight:700;line-height:1;font-size:clamp(2.6r
 .stats{display:flex;gap:.8rem;flex-wrap:wrap;justify-content:center;min-height:2.6rem}
 .chip{display:inline-flex;align-items:center;gap:.5rem;font-weight:700;font-size:1.05rem;padding:.5rem 1.1rem;border-radius:999px;
   background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-.dot{width:.7rem;height:.7rem;border-radius:50%;background:var(--lime);box-shadow:0 0 12px var(--lime);animation:pulse 1.8s ease-in-out infinite}
+.dot{width:.7rem;height:.7rem;border-radius:50%;background:var(--c2);box-shadow:0 0 12px var(--c2);animation:pulse 1.8s ease-in-out infinite}
 .dot.grey{background:#b8c2ee;box-shadow:none;animation:none}
 @keyframes pulse{50%{scale:1.5;opacity:.6}}
 
-.join{font-family:var(--display);font-weight:700;font-size:1.35rem;color:#06210a;text-decoration:none;
-  padding:.85rem 2.4rem;border-radius:999px;background:linear-gradient(180deg,#7dff6f,var(--lime) 55%,var(--lime-d));
-  border:3px solid var(--white);box-shadow:0 8px 0 #12701c,0 18px 40px rgba(65,224,58,.45);
-  transition:transform .15s,box-shadow .15s}
-.join:hover{transform:translateY(-3px);box-shadow:0 11px 0 #12701c,0 24px 50px rgba(65,224,58,.6)}
-.join:active{transform:translateY(6px);box-shadow:0 2px 0 #12701c,0 8px 20px rgba(65,224,58,.4)}
-
-:focus-visible{outline:3px solid var(--white);outline-offset:4px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -86,32 +85,72 @@ h1{font-family:var(--display);font-weight:700;line-height:1;font-size:clamp(2.6r
   </div>
   <h1 id="name">Beam TMA</h1>
   <div class="stats" id="stats" aria-live="polite"></div>
-  <a class="join" id="join" href="https://discord.gg/TEhzy6FHdA" target="_blank" rel="noopener">Join the server</a>
 </main>
 
 <script>
 const INVITE='TEhzy6FHdA';
 const $=id=>document.getElementById(id);
 
-// Live server info from Discord's public invite endpoint (no login needed)
+/* ---------- color helpers ---------- */
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+function rgb2hsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,l=(mx+mn)/2;
+  let h=0,s=0;if(d){s=d/(1-Math.abs(2*l-1));
+    h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;h=(h*60+360)%360}
+  return[h,s,l]}
+const hsl=(h,s,l)=>`hsl(${Math.round(h)} ${Math.round(s*100)}% ${Math.round(l*100)}%)`;
+const hueGap=(a,b)=>{const d=Math.abs(a-b)%360;return d>180?360-d:d};
+
+/* Read the icon's pixels and find its 3 most dominant, distinct, vivid colors */
+function paletteFrom(img){
+  const S=64,c=document.createElement('canvas');c.width=c.height=S;
+  const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,S,S);
+  const px=x.getImageData(0,0,S,S).data,B=24,bins=Array.from({length:B},()=>({w:0,h:0,s:0,l:0}));
+  let vivid=0;
+  for(let i=0;i<px.length;i+=4){
+    if(px[i+3]<128)continue;
+    const[h,s,l]=rgb2hsl(px[i],px[i+1],px[i+2]);
+    const w=s*(1-Math.abs(2*l-1)); // favors saturated, mid-brightness pixels
+    if(s<.25||l<.15||l>.9)continue;
+    const b=bins[Math.floor(h/(360/B))%B];b.w+=w;b.s+=s*w;b.l+=l*w;
+    // average hue on a circle-safe basis by weighting within the bin
+    b.h+=h*w;vivid+=w;
+  }
+  const top=bins.filter(b=>b.w>0).map(b=>({w:b.w,h:b.h/b.w,s:b.s/b.w,l:b.l/b.w})).sort((a,b)=>b.w-a.w);
+  if(!top.length||vivid<5)return null; // grayscale/empty icon: keep default colors
+  const picks=[top[0]];
+  for(const t of top){if(picks.length>=3)break;if(picks.every(p=>hueGap(p.h,t.h)>=40))picks.push(t)}
+  while(picks.length<3){const p=picks[picks.length-1];picks.push({h:(p.h+40*picks.length)%360,s:p.s,l:p.l})}
+  return picks;
+}
+function applyPalette(p){
+  const r=document.documentElement.style,[a,b,c]=p;
+  r.setProperty('--c1',hsl(a.h,clamp(a.s,.55,.95),clamp(a.l,.35,.58)));
+  r.setProperty('--c2',hsl(b.h,clamp(b.s,.6,1),clamp(b.l,.5,.66)));
+  r.setProperty('--c3',hsl(c.h,clamp(c.s,.55,1),clamp(c.l,.55,.7)));
+  r.setProperty('--bg',hsl(a.h,.6,.09));
+}
+
+/* ---------- live data from Discord (public invite endpoint, no login) ---------- */
 fetch(`https://discord.com/api/v10/invites/${INVITE}?with_counts=true`)
   .then(r=>{if(!r.ok)throw 0;return r.json()})
   .then(d=>{
     const g=d.guild||{};
     if(g.icon){
-      const ext=g.icon.startsWith('a_')?'gif':'png';   // animated icons stay animated
-      $('logo').src=`https://cdn.discordapp.com/icons/${g.id}/${g.icon}.${ext}?size=512`;
+      const url=`https://cdn.discordapp.com/icons/${g.id}/${g.icon}.${g.icon.startsWith('a_')?'gif':'png'}?size=512`;
+      $('logo').src=url;
+      const probe=new Image();probe.crossOrigin='anonymous';  // lets us read the pixels
+      probe.onload=()=>{try{const p=paletteFrom(probe);if(p)applyPalette(p)}catch(e){}};
+      probe.src=url;
     }
     if(g.name){$('name').textContent=g.name;document.title=g.name+' - The Fun Space'}
-    const n=v=>Number(v).toLocaleString();
-    let html='';
+    const n=v=>Number(v).toLocaleString();let html='';
     if(d.approximate_presence_count!=null)html+=`<span class="chip"><i class="dot"></i>${n(d.approximate_presence_count)} online</span>`;
     if(d.approximate_member_count!=null)html+=`<span class="chip"><i class="dot grey"></i>${n(d.approximate_member_count)} members</span>`;
     $('stats').innerHTML=html;
   })
-  .catch(()=>{/* Discord unreachable: fallback logo and name stay */});
+  .catch(()=>{/* Discord unreachable: fallback logo, name and default colors stay */});
 
-// 3D tilt on the logo (reacts to the pointer)
+/* 3D tilt on the logo */
 const logo=$('logo');
 addEventListener('pointermove',e=>{
   if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
