@@ -15,7 +15,10 @@
 .card h2{font-size:1.4rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
 .count{margin-left:auto;font-size:.95rem;color:var(--muted);font-family:var(--body);font-weight:700}
 .empty{color:var(--muted);padding:1rem .2rem}.hint{font-size:.82rem;color:var(--muted);margin-top:.5rem;line-height:1.5}
-.row2{display:flex;gap:.6rem}.row2 .btn{white-space:nowrap}
+.evgrid{display:grid;gap:1.6rem;grid-template-columns:1fr}@media(min-width:900px){.evgrid{grid-template-columns:1fr 1.2fr}}
+.chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}.chip{display:inline-flex;align-items:center;gap:.4rem;font-size:.85rem;font-weight:700;padding:.25rem .4rem .25rem .8rem;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2)}
+.chip button{background:rgba(255,107,129,.25);border:0;color:var(--bad);width:1.4rem;height:1.4rem;border-radius:50%;cursor:pointer;font-weight:800;line-height:1}
+.row2{display:flex;gap:.6rem}.row2 select,.row2 input{flex:1;min-width:0}.row2 .btn{white-space:nowrap}
 </style></head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -37,6 +40,25 @@
         <button class="btn" id="ab" style="margin-top:1rem">Add admin</button><div class="msg" id="am" role="alert"></div>
       </form></section>
   </div>
+  <section class="card" id="evc" hidden style="margin-top:1.4rem"><h2>Events</h2>
+    <div class="evgrid">
+      <form id="ef" autocomplete="off">
+        <label for="en">Event name</label><input id="en" maxlength="80" required placeholder="Game night">
+        <label for="es">Discord server</label>
+        <div class="row2"><select id="es" required></select><button type="button" class="btn ghost sm" id="addsrv">+ Server</button></div>
+        <div id="srvbox" hidden><label for="sl">Server invite link</label>
+          <div class="row2"><input id="sl" placeholder="https://discord.gg/xxxxxxx"><button type="button" class="btn sm" id="srvok">Save</button></div>
+          <p class="hint">Use a permanent invite (never expires). The site reads the server's name and logo from it.</p></div>
+        <div class="chips" id="chips"></div>
+        <label for="st">Starts</label><input id="st" type="datetime-local" required>
+        <label for="ee">Ends (optional - defaults to 3 hours later)</label><input id="ee" type="datetime-local">
+        <label for="ed">Description</label><textarea id="ed" maxlength="1000" required placeholder="What's happening, what to bring, who's invited..."></textarea>
+        <button class="btn" id="eb" style="margin-top:1rem">Add event</button><div class="msg" id="em" role="alert"></div>
+      </form>
+      <div><div class="scroll"><table><thead><tr><th>Event</th><th>Server</th><th>Starts</th><th></th></tr></thead><tbody id="ebody"></tbody></table></div>
+        <p class="empty" id="eempty" hidden>No upcoming events yet.</p>
+        <p class="hint">Times use this computer's timezone; visitors see events in their own. Events disappear from the public page when they end.</p></div>
+    </div></section>
 </div>
 <script src="topbar.js"></script>
 <script>
@@ -68,6 +90,32 @@ $('af').onsubmit=async e=>{e.preventDefault();$('am').textContent='';$('am').cla
     toast('Added '+$('an').value.trim()+' - share their password privately');$('am').className='msg ok';$('am').textContent='Account created.';$('af').reset();admins()}
   catch(x){$('am').textContent=x.message}finally{$('ab').disabled=false}};
 
+const dc={};
+function srvName(code){return dc[code]||(dc[code]=fetch('https://discord.com/api/v10/invites/'+encodeURIComponent(code)).then(r=>r.json()).then(d=>(d.guild&&d.guild.name)||code).catch(()=>code))}
+const stamp=ms=>new Date(ms).toLocaleString([],{dateStyle:'medium',timeStyle:'short'});
+async function loadEvents(){
+  const[s,e]=await Promise.all([F.call('/api/servers'),F.call('/api/events')]);
+  const names=await Promise.all(s.servers.map(x=>srvName(x.code))),by={};s.servers.forEach((x,i)=>by[x.code]=names[i]);
+  $('es').innerHTML=s.servers.length?s.servers.map((x,i)=>`<option value="${esc(x.code)}">${esc(names[i])}</option>`).join(''):'<option value="">Add a server first</option>';
+  $('chips').innerHTML=s.servers.map((x,i)=>`<span class="chip">${esc(names[i])}<button type="button" data-rs="${esc(x.code)}" aria-label="Remove ${esc(names[i])}">×</button></span>`).join('');
+  $('eempty').hidden=e.events.length>0;
+  $('ebody').innerHTML=e.events.map(v=>`<tr class="row"><td>${esc(v.name)}</td><td>${esc(by[v.server]||v.server)}</td><td>${esc(stamp(v.starts))}</td><td><button class="btn danger sm" data-re="${v.id}">Remove</button></td></tr>`).join('');
+}
+$('addsrv').onclick=()=>{$('srvbox').hidden=!$('srvbox').hidden};
+$('srvok').onclick=async()=>{const m=$('sl').value.trim().match(/(?:discord\.gg\/|discord\.com\/invite\/)?([A-Za-z0-9-]{2,32})\/?$/);
+  if(!m)return toast('Paste a Discord invite link',1);
+  try{await F.call('/api/servers',{method:'POST',body:{code:m[1]}});$('sl').value='';$('srvbox').hidden=true;toast('Server saved');loadEvents()}catch(x){toast(x.message,1)}};
+$('chips').onclick=async e=>{const c=e.target.dataset.rs;if(!c||!confirm('Remove this server from the list?'))return;
+  try{await F.call('/api/servers/'+encodeURIComponent(c),{method:'DELETE'});toast('Server removed');loadEvents()}catch(x){toast(x.message,1)}};
+$('ebody').onclick=async e=>{const id=e.target.dataset.re;if(!id||!confirm('Remove this event?'))return;
+  try{await F.call('/api/events/'+id,{method:'DELETE'});toast('Event removed');loadEvents()}catch(x){toast(x.message,1)}};
+$('ef').onsubmit=async e=>{e.preventDefault();$('em').textContent='';$('em').className='msg';$('eb').disabled=true;
+  try{const b={name:$('en').value.trim(),server:$('es').value,starts:new Date($('st').value).getTime(),description:$('ed').value.trim()};
+    if($('ee').value)b.ends=new Date($('ee').value).getTime();
+    await F.call('/api/events',{method:'POST',body:b});toast('Event added');$('em').className='msg ok';$('em').textContent='Event is live on the Events page.';
+    const sv=$('es').value;$('ef').reset();$('es').value=sv;loadEvents()}
+  catch(x){$('em').textContent=x.message}finally{$('eb').disabled=false}};
+
 (async()=>{
   if(!F.api||!sessionStorage.getItem('fs_token'))return location.replace('login.html');
   try{me=await F.call('/api/me')}catch{return location.replace('login.html')}
@@ -76,6 +124,7 @@ $('af').onsubmit=async e=>{e.preventDefault();$('am').textContent='';$('am').cla
   if(me.level>=3){$('acc').hidden=false;
     $('al').innerHTML=Object.keys(LV).filter(l=>l<me.level).map(l=>`<option value="${l}">${l} - ${LV[l]}</option>`).join('');admins()}
   else $('grid').classList.remove('two');
+  if(me.level>=2){$('evc').hidden=false;loadEvents()}
   $('app').hidden=false;viewers();setInterval(()=>{if(!document.hidden)viewers()},8000);
 })();
 </script></body></html>
