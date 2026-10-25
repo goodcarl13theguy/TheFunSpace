@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beam TMA - The Fun Space</title>
+<meta name="description" content="Beam TMA Discord server">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* palette taken from the Beam TMA server icon */
+  --navy:#08113a; --blue:#2447e0; --sky:#4f78ff; --lime:#41e03a; --lime-d:#1fae2a; --white:#ffffff;
+  --display:"Fredoka","Trebuchet MS",system-ui,sans-serif;
+  --body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--navy);color:var(--white);font-family:var(--body);overflow:hidden;
+  display:grid;place-items:center;text-align:center;padding-top:var(--topbar-h,72px)}
+
+/* background: spinning burst like the icon + glowing orbs */
+.burst{position:fixed;left:50%;top:50%;width:220vmax;height:220vmax;translate:-50% -50%;z-index:0;
+  background:repeating-conic-gradient(from 0deg,rgba(65,224,58,.22) 0 9deg,rgba(255,255,255,.07) 9deg 18deg);
+  -webkit-mask-image:radial-gradient(circle,#000 0,transparent 38%);mask-image:radial-gradient(circle,#000 0,transparent 38%);
+  animation:spin 80s linear infinite}
+@keyframes spin{to{rotate:360deg}}
+.orbs{position:fixed;inset:0;overflow:hidden;z-index:0}
+.orbs i{position:absolute;width:55vmax;height:55vmax;border-radius:50%;filter:blur(90px);opacity:.5;animation:drift 24s ease-in-out infinite alternate}
+.orbs i:nth-child(1){background:var(--blue);left:-15vmax;top:-18vmax}
+.orbs i:nth-child(2){background:var(--lime-d);right:-20vmax;bottom:-25vmax;opacity:.38;animation-duration:30s;animation-delay:-9s}
+.orbs i:nth-child(3){background:var(--sky);right:5vmax;top:-30vmax;opacity:.3;animation-duration:27s;animation-delay:-14s}
+@keyframes drift{to{transform:translate(10vmax,8vmax) scale(1.25)}}
+.vignette{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 40%,rgba(4,8,30,.8) 100%)}
+
+main{position:relative;z-index:2;padding:1.5rem;display:flex;flex-direction:column;align-items:center;gap:1.3rem}
+
+/* logo (fetched live from Discord) */
+.logo-wrap{perspective:700px}
+.logo{display:block;width:clamp(150px,26vw,230px);height:auto;aspect-ratio:1;border-radius:26%;
+  border:5px solid var(--white);background:var(--blue);
+  box-shadow:0 0 0 6px rgba(65,224,58,.55),0 20px 70px rgba(65,224,58,.45),0 0 120px rgba(36,71,224,.7);
+  animation:pop .9s cubic-bezier(.2,1.5,.4,1) both, bob 5s ease-in-out 1s infinite;
+  transition:transform .15s ease-out,box-shadow .3s;transform-style:preserve-3d}
+.logo:hover{box-shadow:0 0 0 6px rgba(255,255,255,.8),0 20px 80px rgba(65,224,58,.7),0 0 140px rgba(79,120,255,.9)}
+@keyframes pop{from{scale:.3;rotate:-30deg;opacity:0}}
+@keyframes bob{50%{translate:0 -12px}}
+
+h1{font-family:var(--display);font-weight:700;line-height:1;font-size:clamp(2.6rem,9vw,5.5rem);
+  background:linear-gradient(100deg,var(--white),var(--lime),var(--sky),var(--white),var(--lime));
+  background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:shine 7s linear infinite,rise .9s cubic-bezier(.2,1.4,.4,1) .35s both;padding-bottom:.08em}
+@keyframes shine{to{background-position:-250% 0}}
+@keyframes rise{from{transform:translateY(.5em) scale(.9);opacity:0}}
+
+.stats{display:flex;gap:.8rem;flex-wrap:wrap;justify-content:center;min-height:2.6rem}
+.chip{display:inline-flex;align-items:center;gap:.5rem;font-weight:700;font-size:1.05rem;padding:.5rem 1.1rem;border-radius:999px;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.dot{width:.7rem;height:.7rem;border-radius:50%;background:var(--lime);box-shadow:0 0 12px var(--lime);animation:pulse 1.8s ease-in-out infinite}
+.dot.grey{background:#b8c2ee;box-shadow:none;animation:none}
+@keyframes pulse{50%{scale:1.5;opacity:.6}}
+
+.join{font-family:var(--display);font-weight:700;font-size:1.35rem;color:#06210a;text-decoration:none;
+  padding:.85rem 2.4rem;border-radius:999px;background:linear-gradient(180deg,#7dff6f,var(--lime) 55%,var(--lime-d));
+  border:3px solid var(--white);box-shadow:0 8px 0 #12701c,0 18px 40px rgba(65,224,58,.45);
+  transition:transform .15s,box-shadow .15s}
+.join:hover{transform:translateY(-3px);box-shadow:0 11px 0 #12701c,0 24px 50px rgba(65,224,58,.6)}
+.join:active{transform:translateY(6px);box-shadow:0 2px 0 #12701c,0 8px 20px rgba(65,224,58,.4)}
+
+:focus-visible{outline:3px solid var(--white);outline-offset:4px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="burst" aria-hidden="true"></div>
+<div class="orbs" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<main>
+  <div class="logo-wrap">
+    <!-- src is filled in live from Discord; the inline SVG is only a fallback -->
+    <img class="logo" id="logo" alt="Beam TMA server icon" width="230" height="230"
+      src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2341e03a'/%3E%3Ctext x='50' y='64' font-family='Arial Black,sans-serif' font-size='44' font-weight='900' text-anchor='middle' fill='%232447e0' stroke='white' stroke-width='3' paint-order='stroke'%3EBT%3C/text%3E%3C/svg%3E">
+  </div>
+  <h1 id="name">Beam TMA</h1>
+  <div class="stats" id="stats" aria-live="polite"></div>
+  <a class="join" id="join" href="https://discord.gg/TEhzy6FHdA" target="_blank" rel="noopener">Join the server</a>
+</main>
+
+<script>
+const INVITE='TEhzy6FHdA';
+const $=id=>document.getElementById(id);
+
+// Live server info from Discord's public invite endpoint (no login needed)
+fetch(`https://discord.com/api/v10/invites/${INVITE}?with_counts=true`)
+  .then(r=>{if(!r.ok)throw 0;return r.json()})
+  .then(d=>{
+    const g=d.guild||{};
+    if(g.icon){
+      const ext=g.icon.startsWith('a_')?'gif':'png';   // animated icons stay animated
+      $('logo').src=`https://cdn.discordapp.com/icons/${g.id}/${g.icon}.${ext}?size=512`;
+    }
+    if(g.name){$('name').textContent=g.name;document.title=g.name+' - The Fun Space'}
+    const n=v=>Number(v).toLocaleString();
+    let html='';
+    if(d.approximate_presence_count!=null)html+=`<span class="chip"><i class="dot"></i>${n(d.approximate_presence_count)} online</span>`;
+    if(d.approximate_member_count!=null)html+=`<span class="chip"><i class="dot grey"></i>${n(d.approximate_member_count)} members</span>`;
+    $('stats').innerHTML=html;
+  })
+  .catch(()=>{/* Discord unreachable: fallback logo and name stay */});
+
+// 3D tilt on the logo (reacts to the pointer)
+const logo=$('logo');
+addEventListener('pointermove',e=>{
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const x=(e.clientX/innerWidth-.5)*2,y=(e.clientY/innerHeight-.5)*2;
+  logo.style.transform=`rotateY(${x*14}deg) rotateX(${-y*14}deg)`;
+});
+</script>
+<script src="topbar.js"></script>
+</body>
+</html>
