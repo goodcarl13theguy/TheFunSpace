@@ -18,10 +18,11 @@ h1,h2{font-family:var(--display)}
   animation:rise .7s cubic-bezier(.2,1.2,.4,1) both}
 @keyframes rise{from{transform:translateY(24px);opacity:0}}
 label{display:block;font-weight:700;font-size:.9rem;color:var(--muted);margin:1rem 0 .35rem}
-input,select{width:100%;font:inherit;font-weight:600;color:var(--ink);padding:.8rem 1rem;border-radius:.9rem;
+input,select,textarea{width:100%;font:inherit;font-weight:600;color:var(--ink);padding:.8rem 1rem;border-radius:.9rem;
   background:rgba(8,3,26,.55);border:1.5px solid rgba(255,255,255,.18);outline:none;transition:border-color .2s,box-shadow .2s}
+textarea{resize:vertical;min-height:6rem}
 select option{background:#1a0f40}
-input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 4px rgba(77,232,255,.2)}
+input:focus,select:focus,textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 4px rgba(77,232,255,.2)}
 .btn{font-family:var(--display);font-weight:700;font-size:1.05rem;color:#fff;cursor:pointer;border:0;border-radius:999px;padding:.8rem 1.6rem;
   background:linear-gradient(120deg,var(--pink),var(--violet));box-shadow:0 8px 26px rgba(255,95,162,.4);transition:transform .2s cubic-bezier(.2,1.6,.4,1),box-shadow .2s,opacity .2s}
 .btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(255,95,162,.55)}
