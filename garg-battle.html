@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portal vs Garg - The Fun Space</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+body{background:#050b1a;color:#fff;font-family:"Nunito",system-ui,sans-serif;padding-top:var(--topbar-h,72px);min-height:100vh;display:grid;place-items:center;overflow:hidden}
+#stage{position:relative;line-height:0;border-radius:18px;overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.7),0 0 0 2px rgba(255,255,255,.12)}
+canvas{display:block;cursor:none;background:#06304a}
+#ov{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(circle,rgba(5,15,40,.55),rgba(3,6,20,.92));backdrop-filter:blur(4px);text-align:center;line-height:1.4;transition:opacity .3s}
+#ov.hide{opacity:0;pointer-events:none}
+#ov h1{font-family:"Fredoka",sans-serif;font-size:clamp(2rem,6vw,4rem);background:linear-gradient(100deg,#4de8ff,#8a5cff,#ff5fa2,#ffb347);-webkit-background-clip:text;background-clip:text;color:transparent;padding-bottom:.1em}
+#ov p{color:#cfe3ff;font-weight:700;margin:.4rem auto 1.1rem;max-width:34rem;font-size:clamp(.9rem,1.8vw,1.1rem)}
+kbd{font-family:inherit;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);border-bottom-width:3px;border-radius:.4rem;padding:.05rem .5rem;font-weight:800}
+#go{font-family:"Fredoka",sans-serif;font-weight:700;font-size:1.4rem;color:#fff;border:0;cursor:pointer;padding:.8rem 2.6rem;border-radius:999px;background:linear-gradient(120deg,#ff5fa2,#8a5cff);box-shadow:0 8px 30px rgba(138,92,255,.6);transition:transform .2s cubic-bezier(.2,1.6,.4,1)}
+#go:hover{transform:scale(1.08)}
+.small{font-size:.85rem;opacity:.7;margin-top:.9rem}
+</style></head>
+<body>
+<div id="stage"><canvas id="cv" width="1280" height="720"></canvas>
+  <div id="ov"><div><h1 id="t">Portal vs Garg</h1><p id="d">Defeat the Deep Sea Gargantuar! Move your portal with <kbd>W</kbd> <kbd>S</kbd> and hold the <b>mouse button</b> to fire peas at the cursor. Dodge his slashes!</p><button id="go">Play</button><div class="small">P = pause &nbsp;&middot;&nbsp; M = mute &nbsp;&middot;&nbsp; Desktop keyboard + mouse</div></div></div>
+</div>
+<script src="topbar.js"></script>
+<script src="garg-rig.js"></script>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),W=1280,H=720;
+const $=id=>document.getElementById(id),rnd=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const lerp=(a,b,t)=>a+(b-a)*t,ease=t=>t*t*(3-2*t);
+
+/* ---------- fit the 16:9 stage to the window ---------- */
+function fit(){const th=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h'))||72;
+  const w=Math.min(innerWidth-20,(innerHeight-th-24)*16/9,1500);cv.style.width=w+'px';cv.style.height=w*9/16+'px'}
+addEventListener('resize',fit);fit();setTimeout(fit,400);
+
+/* ---------- audio: your wav files + synthesized effects ---------- */
+let AC=null,master=null,muted=false,bufs={},noiseBuf=null;
+function initAudio(){
+  if(AC)return;AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=.8;master.connect(AC.destination);
+  noiseBuf=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  ['GargWalk1','GargWalk2','GargGroan1','GargGroan2'].forEach(n=>fetch('assets/garg/'+n+'.wav').then(r=>r.arrayBuffer()).then(b=>AC.decodeAudioData(b)).then(b=>bufs[n]=b).catch(()=>{}));
+  // low portal hum
+  const o=AC.createOscillator(),o2=AC.createOscillator(),g=AC.createGain();o.frequency.value=62;o2.frequency.value=63.5;o.type='sine';o2.type='triangle';g.gain.value=.035;o.connect(g);o2.connect(g);g.connect(master);o.start();o2.start();
+}
+function sample(n,vol=1,rate=1){if(!AC||!bufs[n])return;const s=AC.createBufferSource(),g=AC.createGain();s.buffer=bufs[n];s.playbackRate.value=rate;g.gain.value=vol;s.connect(g);g.connect(master);s.start()}
+function tone(f0,f1,dur,type='sine',vol=.2,delay=0){if(!AC)return;const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t+dur);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.02)}
+function noise(dur,vol,f0,f1,type='lowpass',delay=0){if(!AC)return;const t=AC.currentTime+delay,s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();s.buffer=noiseBuf;s.loop=true;f.type=type;
+  f.frequency.setValueAtTime(f0,t);f.frequency.exponentialRampToValueAtTime(Math.max(30,f1),t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);s.connect(f);f.connect(g);g.connect(master);s.start(t);s.stop(t+dur+.02)}
+const SFX={
+  pew:()=>tone(rnd(620,760),rnd(220,300),.07,'triangle',.07),
+  hit:()=>{noise(.09,.16,900,200);tone(160,70,.08,'sine',.12)},
+  wind:()=>{tone(90,260,.7,'sawtooth',.06);noise(.7,.07,300,1800,'bandpass')},
+  slash:()=>{noise(.5,.28,600,5000,'bandpass');tone(900,200,.4,'sawtooth',.07);tone(70,35,.3,'sine',.3)},
+  jump:()=>{noise(.35,.15,400,2500,'bandpass');tone(130,260,.3,'square',.04)},
+  land:()=>{tone(110,38,.45,'sine',.55);noise(.4,.35,1200,80)},
+  hurt:()=>{tone(420,90,.4,'sawtooth',.2);noise(.25,.2,2000,200)},
+  die:()=>{[0,.12,.24,.36].forEach((d,i)=>tone(400-i*80,100,.5,'sawtooth',.14,d));noise(.9,.3,2000,60)},
+  boom:()=>{tone(90,25,1.2,'sine',.7);noise(1.3,.55,3000,60)},
+  win:()=>[523,659,784,1047,1319].forEach((f,i)=>tone(f,f*1.005,.5,'triangle',.18,i*.12)),
+  lose:()=>[392,330,262,196].forEach((f,i)=>tone(f,f*.97,.6,'triangle',.18,i*.22))
+};
+let lastHit=0,lastGroanAt=0;
+function groanSound(){if(performance.now()-lastGroanAt<2500)return;lastGroanAt=performance.now();sample(Math.random()<.5?'GargGroan1':'GargGroan2',1)}
+let stepN=0;function stepSound(){sample(stepN++%2?'GargWalk1':'GargWalk2',.9,rnd(.95,1.05));shake=Math.max(shake,3)}
+
+/* ---------- input ---------- */
+const keys={},mouse={x:700,y:360,down:false};
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(['arrowup','arrowdown',' '].includes(e.key.toLowerCase()))e.preventDefault();
+  if(e.key==='p'||e.key==='Escape')togglePause();if(e.key==='m'){muted=!muted;if(master)master.gain.value=muted?0:.8}if(e.key==='r'&&(state==='win'||state==='lose'))start()});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+const mp=e=>{const r=cv.getBoundingClientRect();mouse.x=(e.clientX-r.left)*W/r.width;mouse.y=(e.clientY-r.top)*H/r.height};
+cv.addEventListener('mousemove',mp);cv.addEventListener('mousedown',e=>{mp(e);mouse.down=true;e.preventDefault()});
+addEventListener('mouseup',()=>mouse.down=false);addEventListener('blur',()=>{mouse.down=false;if(state==='play')togglePause()});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+
+/* ---------- game state ---------- */
+let state='menu',time=0,shake=0,P,G,peas=[],slashes=[],parts=[],debris=[],bubbles=[],gt=0,endTimer=0,fightTime=0,bgT=0;
+const PX=118,GX0=900,GX1=1180,GY0=480,GY1=690;
+function start(){
+  P={y:360,vy:0,hp:100,inv:0,shoot:0,pulse:0,dead:0,spin:0};
+  G={x:1030,y:600,lift:0,hp:1000,max:1000,shown:1000,state:'idle',timer:1.4,t:0,walkPhase:0,walking:0,squash:0,air:0,atk:-1,atkFired:false,seq:0,hurt:0,groan:0,flash:0,
+     tx:1030,ty:600,sx:0,sy:0,j:0,groanT:rnd(7,11),dying:0,dead:false,lastAct:''};
+  peas=[];slashes=[];parts=[];debris=[];fightTime=0;endTimer=0;state='play';$('ov').classList.add('hide');
+  if(!bubbles.length)for(let i=0;i<45;i++)bubbles.push({x:rnd(0,W),y:rnd(0,H),r:rnd(2,7),s:rnd(15,45),p:rnd(0,6)});
+}
+function togglePause(){if(state==='play'){state='pause';$('t').textContent='Paused';$('d').textContent='Press P to continue.';$('go').textContent='Resume';$('ov').classList.remove('hide')}
+  else if(state==='pause'){state='play';$('ov').classList.add('hide')}}
+$('go').onclick=()=>{initAudio();if(AC&&AC.state==='suspended')AC.resume();if(state==='pause')togglePause();else start()};
+function endGame(win){state=win?'win':'lose';endTimer=0;const s=fightTime.toFixed(1);
+  setTimeout(()=>{$('t').textContent=win?'Victory!':'Defeated';$('d').textContent=win?`The Gargantuar fell in ${s} seconds. Nice shooting!`:'The Gargantuar crushed your portal. Try dodging his slashes by moving up and down!';
+    $('go').textContent='Play again';$('ov').classList.remove('hide')},win?2600:1500)}
+
+/* ---------- effects ---------- */
+function spark(x,y,n,col,spd=260,size=4,life=.5){for(let i=0;i<n;i++){const a=rnd(0,6.28),v=rnd(.2,1)*spd;parts.push({k:'s',x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:rnd(.5,1)*life,m:life,z:rnd(.6,1)*size,c:col})}}
+function ring(x,y,r,col,life=.6,w=6){parts.push({k:'r',x,y,r:10,R:r,l:life,m:life,c:col,w})}
+function dust(x,y,n){for(let i=0;i<n;i++)parts.push({k:'d',x:x+rnd(-90,90),y:y+rnd(-8,8),vx:rnd(-120,120),vy:rnd(-80,-10),l:rnd(.6,1.1),m:1.1,z:rnd(10,26),c:'rgba(210,190,150,'})}
+
+/* ---------- garg AI ---------- */
+const scaleAt=y=>1.02+(y-GY0)/(GY1-GY0)*.16;
+const speedMul=()=>1+(1-G.hp/G.max)*.55, phase=()=>G.hp/G.max<.3?3:G.hp/G.max<.62?2:1;
+function setState(s,t){G.state=s;G.timer=t;G.lastAct=s}
+function nextAction(){const r=Math.random(),la=G.lastAct;
+  if(r<.34&&la!=='attack')return startAttack(); if(r<.6&&la!=='jump')return startJump(); if(r<.82&&la!=='walk')return startWalk(); if(r<.9)return startGroan(); startAttack()}
+function startAttack(){setState('attack',1.5/speedMul());G.atk=0;G.atkFired=false;SFX.wind()}
+function startWalk(){G.tx=clamp(G.x+(Math.random()<.5?-1:1)*rnd(90,200),GX0,GX1);if(Math.abs(G.tx-G.x)<40)G.tx=G.x>1040?GX0+30:GX1-30;setState('walk',4)}
+function startJump(){let ny;do{ny=rnd(GY0,GY1)}while(Math.abs(ny-G.y)<90);G.ty=ny;G.tx=rnd(GX0+20,GX1-20);G.sx=G.x;G.sy=G.y;G.j=0;setState('jump',0);SFX.jump()}
+function startGroan(){setState('groan',1.8);groanSound()}
+function fireSlash(){
+  const sc=scaleAt(G.y),ph=phase(),lane=G.y-G.lift-95*sc,tipX=G.x-240*sc,sp=520+(1-G.hp/G.max)*170,ang=ph>=2?[-.2,0,.2]:[0];
+  SFX.slash();shake=Math.max(shake,12);ring(tipX,lane,150,'rgba(255,255,255,',.5,8);spark(tipX,lane,22,'#bff6ff',420,5,.6);
+  ang.forEach(a=>slashes.push({x:tipX,y:lane,vx:-Math.cos(a)*sp,vy:Math.sin(a)*sp,a,h:150*sc/1.1,l:4,hit:false}));
+}
+function updateGarg(dt){
+  const sc=scaleAt(G.y),m=speedMul();G.t+=dt;G.hurt=Math.max(0,G.hurt-dt*4);G.flash=Math.max(0,G.flash-dt*5);
+  if(G.dying>0){G.dying+=dt;G.flash=.5+.5*Math.sin(G.dying*40)*.5;shake=Math.max(shake,5);G.groan=1;
+    if(G.dying>1.1){explode();}return}
+  let walking=0;
+  if(G.state==='idle'){G.timer-=dt;G.groanT-=dt;if(G.groanT<=0){G.groanT=rnd(8,13);startGroan()}else if(G.timer<=0)nextAction()}
+  else if(G.state==='walk'){const dx=G.tx-G.x,step=Math.sign(dx)*Math.min(Math.abs(dx),135*m*dt);walking=1;const old=Math.sin(G.walkPhase);G.x+=step;G.walkPhase+=Math.abs(step)*.062;
+    if(old*Math.sin(G.walkPhase)<0)stepSound();if(Math.abs(G.tx-G.x)<2){setState('idle',rnd(.5,1.1)/m)}}
+  else if(G.state==='groan'){G.timer-=dt;G.groan=Math.sin(clamp((1.8-G.timer)/1.8,0,1)*Math.PI);if(G.timer<=0){G.groan=0;setState('idle',rnd(.5,1)/m)}}
+  else if(G.state==='attack'){const dur=1.5/m;G.atk+=dt/dur;if(G.atk>=.57&&!G.atkFired){G.atkFired=true;fireSlash()}
+    if(G.atk>=1){G.atk=-1;if(phase()===3&&!G.seq){G.seq=1;startAttack();G.atkFired=false}else{G.seq=0;setState('idle',rnd(.6,1.2)/m)}}}
+  else if(G.state==='jump'){G.j+=dt;const crouch=.38/m,air=.85/m,land=.3;
+    if(G.j<crouch){G.squash=ease(G.j/crouch)}
+    else if(G.j<crouch+air){const u=(G.j-crouch)/air;G.squash=lerp(G.squash,-.4,.3);G.air=Math.sin(u*Math.PI);G.x=lerp(G.sx,G.tx,ease(u));G.y=lerp(G.sy,G.ty,ease(u));G.lift=Math.sin(u*Math.PI)*185;
+      if(u>.85&&!G.landed){G.landed=true}}
+    else{if(G.landed!=='done'){G.landed='done';G.lift=0;G.air=0;G.x=G.tx;G.y=G.ty;G.squash=1;SFX.land();shake=Math.max(shake,22);ring(G.x,G.y,260,'rgba(255,230,160,',.7,10);ring(G.x,G.y,170,'rgba(255,255,255,',.5,6);dust(G.x,G.y,22);groanSound()}
+      const u=(G.j-crouch-air)/land;G.squash=lerp(1,0,ease(clamp(u,0,1)));if(u>=1){G.landed=false;G.squash=0;setState('idle',rnd(.4,.9)/m)}}}
+  G.walking=lerp(G.walking,walking,Math.min(1,dt*9));
+  if(G.state!=='jump'){G.squash=lerp(G.squash,0,Math.min(1,dt*10));G.air=lerp(G.air,0,Math.min(1,dt*10))}
+  if(G.state!=='groan')G.groan=lerp(G.groan,0,Math.min(1,dt*8));
+}
+function damageGarg(d,x,y){
+  G.hp-=d;G.hurt=Math.min(.3,G.hurt+.07);G.flash=Math.min(.35,G.flash+.22);spark(x,y,4,'#9dff6a',240,4,.35);
+  if(performance.now()-lastHit>85){lastHit=performance.now();SFX.hit()}
+  if(Math.random()<.012)groanSound();
+  if(G.hp<=0&&!G.dying){G.hp=0;G.dying=.001;G.state='dead';G.atk=-1;slashes=[];SFX.die();SFX.boom()}
+}
+function explode(){
+  const sc=scaleAt(G.y),px=G.x,py=G.y-G.lift;SFX.boom();shake=40;G.dead=true;G.dying=0;
+  debris=GargRig.shatter(GargRig.pose({t:G.t,atk:-1,groan:1}),px,py,sc);
+  for(let i=0;i<4;i++)ring(px,py-150,rnd(200,420),['rgba(255,220,120,','rgba(255,95,162,','rgba(77,232,255,','rgba(255,255,255,'][i],.9+i*.15,10);
+  spark(px,py-150,90,'#ffd35a',700,7,1.1);spark(px,py-150,60,'#ff5fa2',560,6,1);spark(px,py-150,40,'#4de8ff',480,5,1);dust(px,py,30);
+  endGame(true);
+}
+
+/* ---------- update ---------- */
+function update(dt){
+  time+=dt;bgT+=dt;shake*=Math.pow(.02,dt);
+  bubbles.forEach(b=>{b.y-=b.s*dt;b.x+=Math.sin(bgT+b.p)*12*dt;if(b.y<-10){b.y=H+10;b.x=rnd(0,W)}});
+  if(state==='menu'){G.t+=dt;return}
+  if(state==='pause')return;
+  if(state==='play')fightTime+=dt;
+  // portal
+  if(P&&!P.dead){const dir=(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0);P.vy=lerp(P.vy,dir*470,Math.min(1,dt*12));P.y=clamp(P.y+P.vy*dt,75,650);P.spin+=dt;
+    P.inv=Math.max(0,P.inv-dt);P.pulse=Math.max(0,P.pulse-dt*6);P.shoot-=dt;
+    if(state==='play'&&mouse.down&&P.shoot<=0){P.shoot=.108;P.pulse=1;const a=Math.atan2(mouse.y-P.y,mouse.x-PX),aa=a+rnd(-.025,.025);
+      peas.push({x:PX+Math.cos(a)*50,y:P.y+Math.sin(a)*50,vx:Math.cos(aa)*980,vy:Math.sin(aa)*980,l:1.6});SFX.pew();spark(PX+Math.cos(a)*55,P.y+Math.sin(a)*55,2,'#b6ff7a',160,3,.2)}}
+  else if(P&&P.dead){P.dead+=dt}
+  if(G&&state!=='lose'){updateGarg(dt)}
+  // peas
+  const sc=scaleAt(G.y),gy=G.y-G.lift,box={x0:G.x-135*sc,x1:G.x+120*sc,y0:gy-315*sc,y1:gy-22*sc};
+  for(let i=peas.length-1;i>=0;i--){const p=peas[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.l-=dt;
+    if(p.l<=0||p.x>W+30||p.y<-30||p.y>H+30){peas.splice(i,1);continue}
+    if(!G.dead&&G.dying===0&&p.x>box.x0&&p.x<box.x1&&p.y>box.y0&&p.y<box.y1){damageGarg(3,p.x,p.y);peas.splice(i,1)}
+    else if(Math.random()<.6)parts.push({k:'s',x:p.x,y:p.y,vx:0,vy:0,l:.18,m:.18,z:4,c:'#8dff5c'})}
+  // slashes
+  for(let i=slashes.length-1;i>=0;i--){const s=slashes[i];s.x+=s.vx*dt;s.y+=s.vy*dt;s.l-=dt;
+    if(Math.random()<.9)parts.push({k:'s',x:s.x+rnd(-10,40),y:s.y+rnd(-s.h/2,s.h/2),vx:rnd(0,120),vy:rnd(-30,30),l:.35,m:.35,z:rnd(3,7),c:'#9fefff'});
+    if(s.x<-150||s.l<=0){slashes.splice(i,1);continue}
+    if(!s.hit&&P&&!P.dead&&P.inv<=0&&Math.abs(s.x-PX)<46&&Math.abs(s.y-P.y)<s.h/2+48){s.hit=true;hurtPlayer(phase()===3?20:15)}}
+  // particles + debris
+  for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.l-=dt;if(p.l<=0){parts.splice(i,1);continue}
+    if(p.k==='r')p.r=lerp(p.r,p.R,1-Math.pow(.001,dt));else{p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.k==='s'){p.vx*=Math.pow(.05,dt);p.vy*=Math.pow(.05,dt)}if(p.k==='d'){p.vx*=.97;p.z+=dt*14}}}
+  for(const d of debris){d.vy+=1100*dt;d.x+=d.vx*dt;d.y+=d.vy*dt;d.r+=d.vr*dt;d.life-=dt;if(d.y>H-40&&d.vy>0){d.y=H-40;d.vy*=-.4;d.vx*=.7;d.vr*=.6}
+    if(Math.random()<.2)parts.push({k:'s',x:d.x,y:d.y,vx:0,vy:0,l:.3,m:.3,z:5,c:'#ffb347'})}
+  debris=debris.filter(d=>d.life>0);
+  G.shown=lerp(G.shown,G.hp,Math.min(1,dt*2.2));
+}
+function hurtPlayer(d){P.hp-=d;P.inv=1.1;shake=Math.max(shake,18);SFX.hurt();spark(PX,P.y,26,'#ff5f7e',420,6,.6);ring(PX,P.y,120,'rgba(255,95,126,',.5,8);
+  if(P.hp<=0){P.hp=0;P.dead=.001;SFX.lose();spark(PX,P.y,70,'#b46bff',600,7,1);ring(PX,P.y,300,'rgba(180,107,255,',.9,10);endGame(false)}}
+
+/* ---------- drawing ---------- */
+function drawBG(){
+  let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0a4a66');g.addColorStop(.5,'#07263f');g.addColorStop(1,'#030a18');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.globalCompositeOperation='lighter';
+  for(let i=0;i<7;i++){const x=i*220-80+Math.sin(bgT*.25+i)*60,a=.045+.03*Math.sin(bgT*.6+i*1.7);ctx.fillStyle=`rgba(120,230,255,${a})`;
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+90,0);ctx.lineTo(x+330,H);ctx.lineTo(x+120,H);ctx.fill()}ctx.restore();
+  // distant kelp + rocks
+  ctx.fillStyle='rgba(4,30,45,.8)';for(let i=0;i<9;i++){const bx=i*170+40,sw=Math.sin(bgT*.8+i)*16;ctx.beginPath();ctx.moveTo(bx-14,455);ctx.quadraticCurveTo(bx+sw,360,bx+sw*1.5,290-i%3*30);ctx.quadraticCurveTo(bx+sw*.4+20,380,bx+16,455);ctx.fill()}
+  // sandy arena floor
+  g=ctx.createLinearGradient(0,430,0,H);g.addColorStop(0,'#1d5a63');g.addColorStop(.35,'#17454f');g.addColorStop(1,'#0a232e');ctx.fillStyle=g;ctx.fillRect(0,440,W,H-440);
+  ctx.strokeStyle='rgba(120,230,230,.08)';ctx.lineWidth=2;for(let i=0;i<8;i++){const y=455+i*i*5.5;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  // caustics on floor
+  ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle='rgba(140,255,240,.07)';ctx.lineWidth=3;for(let i=0;i<14;i++){const x=(i*110+bgT*18)%(W+120)-60,y=470+(i*53)%230;ctx.beginPath();ctx.ellipse(x,y,50+Math.sin(bgT+i)*14,12,0,0,6.3);ctx.stroke()}ctx.restore();
+  bubbles.forEach(b=>{ctx.strokeStyle='rgba(200,245,255,.35)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,6.3);ctx.stroke();ctx.fillStyle='rgba(255,255,255,.12)';ctx.fill()});
+}
+function drawPortal(){
+  if(!P)return;const x=PX,y=P.y,dead=P.dead,k=dead?Math.max(0,1-dead*1.6):1;if(k<=0)return;
+  if(P.inv>0&&Math.floor(P.inv*14)%2===0&&!dead)ctx.globalAlpha=.4;
+  const a=Math.atan2(mouse.y-y,mouse.x-x),pl=1+P.pulse*.12;
+  ctx.save();ctx.translate(x,y);ctx.scale(k*pl,k*pl);
+  ctx.shadowColor='#7a5cff';ctx.shadowBlur=45;let g=ctx.createRadialGradient(0,0,4,0,0,70);g.addColorStop(0,'#02020c');g.addColorStop(.35,'#1a0f5a');g.addColorStop(.7,'#6a3cff');g.addColorStop(1,'rgba(77,232,255,.0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(0,0,40,70,0,0,6.3);ctx.fill();ctx.shadowBlur=0;
+  for(let i=0;i<5;i++){ctx.save();ctx.rotate(P.spin*(1.5+i*.6)*(i%2?-1:1));ctx.strokeStyle=['#4de8ff','#ff5fa2','#b58bff','#ffffff','#4de8ff'][i];ctx.globalAlpha*=.8;ctx.lineWidth=4-i*.5;
+    ctx.beginPath();ctx.ellipse(0,0,38-i*5,66-i*9,0,0,Math.PI*1.2);ctx.stroke();ctx.restore()}
+  ctx.strokeStyle='#e9d9ff';ctx.lineWidth=4;ctx.shadowColor='#4de8ff';ctx.shadowBlur=22;ctx.beginPath();ctx.ellipse(0,0,42,72,0,0,6.3);ctx.stroke();ctx.shadowBlur=0;
+  for(let i=0;i<6;i++){const t=P.spin*2+i*1.05;ctx.fillStyle=i%2?'#4de8ff':'#ff5fa2';ctx.beginPath();ctx.arc(Math.cos(t)*44,Math.sin(t)*74,3,0,6.3);ctx.fill()}
+  // barrel glow toward the aim point
+  ctx.rotate(a);ctx.fillStyle=`rgba(180,255,120,${.25+P.pulse*.6})`;ctx.shadowColor='#9dff6a';ctx.shadowBlur=18;ctx.beginPath();ctx.arc(52,0,8+P.pulse*7,0,6.3);ctx.fill();
+  ctx.restore();ctx.globalAlpha=1;
+}
+function drawGarg(){
+  const sc=scaleAt(G.y),gy=G.y-G.lift;
+  // ground shadow (shrinks while he's airborne)
+  const sh=1-G.lift/420;ctx.fillStyle=`rgba(0,0,0,${.38*sh})`;ctx.beginPath();ctx.ellipse(G.x,G.y+4,150*sc*sh,26*sc*sh,0,0,6.3);ctx.fill();
+  if(state==='jump'||G.state==='jump'){if(G.j>0&&G.landed!=='done'&&G.state==='jump'){ctx.strokeStyle='rgba(255,230,150,.5)';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(G.tx,G.ty+4,150*sc,26*sc,0,0,6.3);ctx.stroke()}}
+  if(G.dead)return;
+  const p=GargRig.pose({t:G.t,walkPhase:G.walkPhase,walking:G.walking,squash:G.squash,air:G.air,atk:G.atk,hurt:G.hurt,groan:G.groan});
+  GargRig.draw(ctx,p,G.x,gy,sc,G.flash);
+}
+function drawTelegraph(){
+  if(G.state!=='attack'||G.atk<.04||G.atk>=.57)return;const sc=scaleAt(G.y),lane=G.y-G.lift-95*sc,tipX=G.x-240*sc,h=150*sc/1.1,pul=.5+.5*Math.sin(time*22),a=ease(clamp((G.atk-.04)/.3,0,1));
+  const lanes=phase()>=2?[-.2,0,.2]:[0];
+  lanes.forEach(an=>{ctx.save();ctx.translate(tipX,lane);ctx.rotate(Math.PI-an);const g=ctx.createLinearGradient(0,0,tipX+200,0);g.addColorStop(0,`rgba(255,70,90,${(.32+pul*.2)*a})`);g.addColorStop(1,'rgba(255,70,90,0)');
+    ctx.fillStyle=g;ctx.fillRect(0,-h/2,tipX+260,h);ctx.strokeStyle=`rgba(255,120,140,${.5*a})`;ctx.lineWidth=2;ctx.setLineDash([14,12]);ctx.strokeRect(0,-h/2,tipX+260,h);ctx.restore()});
+}
+function drawSlash(s){
+  ctx.save();ctx.translate(s.x,s.y);ctx.rotate(Math.atan2(s.vy,s.vx)+Math.PI);ctx.globalCompositeOperation='lighter';const h=s.h;
+  for(let i=0;i<3;i++){const sc=1-i*.22;ctx.fillStyle=['rgba(77,232,255,.55)','rgba(255,255,255,.75)','rgba(255,95,162,.5)'][i];ctx.shadowColor='#4de8ff';ctx.shadowBlur=30;
+    ctx.beginPath();ctx.moveTo(-14*sc,-h/2*sc);ctx.quadraticCurveTo(70*sc,0,-14*sc,h/2*sc);ctx.quadraticCurveTo(26*sc,0,-14*sc,-h/2*sc);ctx.fill()}
+  ctx.restore();
+}
+function drawFX(){
+  ctx.save();ctx.globalCompositeOperation='lighter';
+  for(const p of parts){const t=p.l/p.m;
+    if(p.k==='s'){ctx.fillStyle=p.c;ctx.globalAlpha=clamp(t*1.4,0,1);ctx.beginPath();ctx.arc(p.x,p.y,p.z*t+.5,0,6.3);ctx.fill()}
+    else if(p.k==='r'){ctx.globalAlpha=t;ctx.strokeStyle=p.c+t+')';ctx.lineWidth=p.w*t;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.3);ctx.stroke()}}
+  ctx.restore();ctx.globalAlpha=1;
+  for(const p of parts)if(p.k==='d'){const t=p.l/p.m;ctx.fillStyle=p.c+(.4*t)+')';ctx.beginPath();ctx.arc(p.x,p.y,p.z,0,6.3);ctx.fill()}
+}
+function bar(x,y,w,h,v,front,back,label,align){
+  ctx.fillStyle='rgba(0,0,0,.55)';ctx.beginPath();ctx.roundRect(x-3,y-3,w+6,h+6,h);ctx.fill();
+  ctx.fillStyle=back;ctx.beginPath();ctx.roundRect(x,y,Math.max(0,w*v[1]),h,h/2);ctx.fill();
+  const g=ctx.createLinearGradient(x,0,x+w,0);g.addColorStop(0,front[0]);g.addColorStop(1,front[1]);ctx.fillStyle=g;ctx.beginPath();ctx.roundRect(x,y,Math.max(0,w*v[0]),h,h/2);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.28)';ctx.beginPath();ctx.roundRect(x+4,y+2,Math.max(0,w*v[0]-8),h/3,h/3);ctx.fill();
+  ctx.font='700 17px Fredoka,sans-serif';ctx.fillStyle='#fff';ctx.textAlign=align;ctx.shadowColor='#000';ctx.shadowBlur=6;ctx.fillText(label,align==='center'?x+w/2:x,y-10);ctx.shadowBlur=0}
+function drawHUD(){
+  if(!G)return;bar(W/2-320,36,640,24,[G.hp/G.max,G.shown/G.max],G.hp/G.max<.3?['#ff5f7e','#ff9a5f']:['#ff5fa2','#ffb347'],'rgba(255,255,255,.85)','DEEP SEA GARGANTUAR','center');
+  bar(40,H-48,320,20,[P.hp/100,P.hp/100],['#4de8ff','#8dff6a'],'#000','PORTAL','left');
+  ctx.font='700 15px Nunito,sans-serif';ctx.fillStyle='rgba(255,255,255,.7)';ctx.textAlign='right';ctx.fillText(fightTime.toFixed(1)+'s',W-24,34);
+  // crosshair
+  if(state==='play'){ctx.strokeStyle=mouse.down?'#b6ff7a':'rgba(255,255,255,.85)';ctx.lineWidth=2.5;ctx.shadowColor='#000';ctx.shadowBlur=4;ctx.beginPath();ctx.arc(mouse.x,mouse.y,mouse.down?9:13,0,6.3);ctx.moveTo(mouse.x-20,mouse.y);ctx.lineTo(mouse.x-6,mouse.y);ctx.moveTo(mouse.x+6,mouse.y);ctx.lineTo(mouse.x+20,mouse.y);ctx.moveTo(mouse.x,mouse.y-20);ctx.lineTo(mouse.x,mouse.y-6);ctx.moveTo(mouse.x,mouse.y+6);ctx.lineTo(mouse.x,mouse.y+20);ctx.stroke();ctx.shadowBlur=0}
+}
+function drawPea(p){ctx.save();ctx.shadowColor='#9dff6a';ctx.shadowBlur=14;ctx.fillStyle='#5fd635';ctx.beginPath();ctx.arc(p.x,p.y,9,0,6.3);ctx.fill();ctx.shadowBlur=0;
+  ctx.fillStyle='#b8ff8a';ctx.beginPath();ctx.arc(p.x-3,p.y-3,3.5,0,6.3);ctx.fill();ctx.strokeStyle='#2f8a1e';ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,9,0,6.3);ctx.stroke();ctx.restore()}
+function render(){
+  ctx.save();if(shake>.3)ctx.translate(rnd(-shake,shake),rnd(-shake,shake));
+  drawBG();if(G){drawTelegraph();drawGarg();}
+  for(const d of debris)GargRig.drawDebris(ctx,d);
+  slashes.forEach(drawSlash);peas.forEach(drawPea);drawPortal();drawFX();ctx.restore();
+  if(P&&P.hp<35&&P.hp>0){ctx.fillStyle=`rgba(255,40,70,${.12+.08*Math.sin(time*7)})`;ctx.fillRect(0,0,W,H)}
+  drawHUD();
+}
+/* ---------- main loop ---------- */
+let last=performance.now();
+function loop(now){const dt=Math.min(.033,(now-last)/1000);last=now;if(!G)idleDemo(dt);else update(dt);render();requestAnimationFrame(loop)}
+function idleDemo(dt){bgT+=dt;bubbles.forEach(b=>{b.y-=b.s*dt;if(b.y<-10){b.y=H+10;b.x=rnd(0,W)}})}
+start0();
+function start0(){start();state='menu';$('ov').classList.remove('hide');G.timer=99}
+GargRig.load().then(()=>requestAnimationFrame(loop));
+window.GAME={get G(){return G},get P(){return P},get state(){return state},mouse,keys,startAttack,startJump,startWalk,startGroan,setHp:v=>G.hp=v};
+</script></body></html>

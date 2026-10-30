@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minigames - The Fun Space</title>
+<meta name="description" content="Playable games made for The Fun Space">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="auth.css">
+<style>
+.wrap{width:min(74rem,94vw);margin:0 auto}
+.top{text-align:center;margin-bottom:2rem}
+.top h1{font-size:clamp(2.4rem,7vw,4.2rem);line-height:1.05;padding-bottom:.1em}.top p{color:var(--muted);font-weight:600;margin-top:.5rem;font-size:1.1rem}
+.cards{display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fill,minmax(min(100%,22rem),1fr))}
+.game{padding:0;overflow:hidden;display:flex;flex-direction:column;transition:transform .3s cubic-bezier(.2,1.4,.4,1),box-shadow .3s;animation-delay:calc(var(--i)*90ms)}
+.game:hover{transform:translateY(-8px) rotate(-.4deg);box-shadow:0 28px 70px rgba(138,92,255,.45),inset 0 1px 0 rgba(255,255,255,.15)}
+.shot{position:relative;line-height:0;background:#06304a}
+.shot canvas{width:100%;height:auto;display:block}
+.shot::after{content:"";position:absolute;inset:auto 0 0;height:40%;background:linear-gradient(transparent,rgba(15,8,38,.85))}
+.body{padding:1.2rem 1.4rem 1.5rem;display:flex;flex-direction:column;gap:.7rem;flex:1}
+.body h2{font-size:1.7rem;line-height:1.1}
+.body p{color:#eee6ff;line-height:1.5}
+.tags{display:flex;flex-wrap:wrap;gap:.45rem}.tag{font-size:.75rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:.25rem .7rem;border-radius:999px;background:rgba(77,232,255,.16);border:1px solid var(--cyan);color:var(--cyan)}
+.tag.k{background:rgba(255,179,71,.16);border-color:var(--amber);color:var(--amber)}
+.ctl{font-size:.9rem;color:var(--muted);font-weight:700}
+.play{margin-top:auto;text-align:center;text-decoration:none;display:block}
+.more{margin-top:2rem;text-align:center;color:var(--muted);font-weight:700}
+</style></head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="wrap">
+  <div class="top"><h1 class="grad">Minigames</h1><p>Games made just for our servers. Pick one and play!</p></div>
+  <div class="cards" id="cards"></div>
+  <p class="more">More games coming soon...</p>
+</div>
+<script src="topbar.js"></script>
+<script src="garg-rig.js"></script>
+<script>
+/* ===== ADD NEW GAMES HERE: one object per game ===== */
+const GAMES=[
+  {title:'Portal vs Garg',href:'garg-battle.html',preview:'garg',tags:['Action','Boss fight'],
+   desc:'Control a portal on the left and blast peas at the Deep Sea Gargantuar. Dodge his weapon slashes and his huge jumps, and take him down before he takes you!',
+   controls:'W / S to move  ·  hold mouse to shoot'}
+];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const previews=[];
+$cards=document.getElementById('cards');
+$cards.innerHTML=GAMES.map((g,i)=>`<article class="card game" style="--i:${i}">
+  <a class="shot" href="${esc(g.href)}" aria-label="Play ${esc(g.title)}"><canvas width="440" height="290" data-prev="${esc(g.preview||'')}"></canvas></a>
+  <div class="body"><h2>${esc(g.title)}</h2><div class="tags">${g.tags.map((t,j)=>`<span class="tag${j?' k':''}">${esc(t)}</span>`).join('')}</div>
+  <p>${esc(g.desc)}</p><div class="ctl">${esc(g.controls)}</div>
+  <a class="btn play" href="${esc(g.href)}">Play now</a></div></article>`).join('');
+// live preview of the garg rig on the Portal vs Garg card
+function setup(cv){
+  const x=cv.getContext('2d'),t0=performance.now();
+  function frame(now){
+    const t=(now-t0)/1000,g=document.createElement;
+    let gr=ctxGrad(x);x.fillStyle=gr;x.fillRect(0,0,440,290);
+    x.fillStyle='rgba(23,69,79,.9)';x.fillRect(0,185,440,105);
+    x.fillStyle='rgba(120,230,255,.07)';for(let i=0;i<4;i++){const bx=i*130-30+Math.sin(t*.3+i)*20;x.beginPath();x.moveTo(bx,0);x.lineTo(bx+50,0);x.lineTo(bx+170,290);x.lineTo(bx+60,290);x.fill()}
+    const cyc=t%6,atk=cyc<1.8?cyc/1.8:-1,groan=cyc>3.4&&cyc<5?Math.sin((cyc-3.4)/1.6*Math.PI):0;
+    x.fillStyle='rgba(0,0,0,.35)';x.beginPath();x.ellipse(280,262,95,15,0,0,6.3);x.fill();
+    GargRig.draw(x,GargRig.pose({t,atk,groan}),285,262,.62,0);
+    // portal
+    x.save();x.translate(46,170);x.shadowColor='#7a5cff';x.shadowBlur=26;const pg=x.createRadialGradient(0,0,3,0,0,50);pg.addColorStop(0,'#02020c');pg.addColorStop(.5,'#3a1fa0');pg.addColorStop(1,'#6a3cff');x.fillStyle=pg;x.beginPath();x.ellipse(0,0,24,46,0,0,6.3);x.fill();x.shadowBlur=0;
+    x.strokeStyle='#e9d9ff';x.lineWidth=3;x.beginPath();x.ellipse(0,0,26,48,0,0,6.3);x.stroke();x.rotate(t*2);x.strokeStyle='#4de8ff';x.beginPath();x.ellipse(0,0,18,34,0,0,4);x.stroke();x.restore();
+    // a few peas flying across
+    x.fillStyle='#5fd635';x.shadowColor='#9dff6a';x.shadowBlur=10;for(let i=0;i<4;i++){const px=80+((t*260+i*70)%170);x.beginPath();x.arc(px,170-i*2,6,0,6.3);x.fill()}x.shadowBlur=0;
+    requestAnimationFrame(frame);
+  }
+  GargRig.load().then(()=>requestAnimationFrame(frame));
+}
+function ctxGrad(x){const g=x.createLinearGradient(0,0,0,290);g.addColorStop(0,'#0a4a66');g.addColorStop(.6,'#07263f');g.addColorStop(1,'#030a18');return g}
+document.querySelectorAll('canvas[data-prev="garg"]').forEach(setup);
+</script></body></html>
