@@ -12,6 +12,7 @@
   var PAGES = [
     { label: 'Home', href: './' },
     { label: 'Events', href: 'events.html' },
+    { label: 'Minigames', href: 'minigames.html' },
     { label: 'Beam TMA', href: 'beam-tma.html' }
     // { label: 'Events',     href: 'events.html' },
     // { label: 'Game Night', href: 'game-night.html' },
@@ -78,11 +79,13 @@
     background-size:200% 100%;animation:shine 8s linear infinite}
   @keyframes shine{to{background-position:-200% 0}}
   .brand{display:flex;align-items:center;gap:.7rem;color:var(--ink);text-decoration:none;
-    font-family:var(--display);font-weight:700;font-size:1.3rem;border-radius:.8rem}
+    font-family:var(--display);font-weight:700;font-size:1.3rem;border-radius:.8rem;flex:none;white-space:nowrap}
   .brand img{width:44px;height:44px;border-radius:30%;filter:drop-shadow(0 4px 14px rgba(255,95,162,.55));
     transition:transform .4s cubic-bezier(.2,1.6,.4,1)}
   .brand:hover img{transform:rotate(-10deg) scale(1.12)}
-  nav{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:flex-end}
+  nav{display:flex;gap:.5rem;flex-wrap:nowrap;justify-content:flex-end;overflow-x:auto;min-width:0;padding:.2rem .1rem;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  .nav-btn{flex:none;white-space:nowrap}
   .nav-btn{font-family:var(--display);font-weight:500;font-size:1.05rem;color:var(--ink);text-decoration:none;
     padding:.55rem 1.3rem;border-radius:999px;border:1px solid rgba(255,255,255,.18);
     background:rgba(255,255,255,.07);
@@ -94,7 +97,8 @@
   .nav-btn.danger{border-color:rgba(255,107,129,.6);color:#ffb3c0}
   .nav-btn.danger:hover{background:rgba(255,107,129,.25);box-shadow:0 8px 24px rgba(255,107,129,.4)}
   a:focus-visible,button:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
-  @media (max-width:520px){.brand span{display:none}}
+  @media (max-width:860px){.brand span{display:none}.nav-btn{padding:.5rem 1rem;font-size:1rem}}
+  @media (max-width:520px){header{gap:.6rem}.nav-btn{padding:.45rem .8rem;font-size:.92rem}}
   @media (prefers-reduced-motion:reduce){*,*::after{animation:none!important;transition:none!important}}
   `;
 
