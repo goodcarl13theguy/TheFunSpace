@@ -86,7 +86,7 @@ const PX=118,PRY=74,PRX=42,GX0=860,GX1=1180,GY0=480,GY1=690;
 function start(){
   P={y:360,vy:0,hp:100,inv:0,shoot:0,pulse:0,dead:0,spin:0,hurtT:0,f1:false,f2:false};
   G={x:1030,y:600,lift:0,hp:1300,max:1300,shown:1300,state:'idle',timer:1.1,t:0,walkPhase:0,walking:0,squash:0,air:0,atk:-1,atkFired:false,seq:0,hurt:0,groan:0,flash:0,spit:-1,spitQ:[],spitFired:false,cheer:0,
-     tx:1030,ty:600,sx:0,sy:0,j:0,groanT:rnd(7,11),dying:0,dead:false,lastAct:'',wavesLeft:0,slammed:false,landed:false};
+     tx:1030,ty:600,sx:0,sy:0,j:0,groanT:rnd(7,11),dying:0,dead:false,lastAct:'',wavesLeft:0,slammed:false,landed:false,lastGap:null};
   peas=[];slashes=[];bombs=[];clouds=[];waves=[];parts=[];pp=[];debris=[];fightTime=0;ts=1;flash=0;camZ=1;callout=null;state='play';$('ov').classList.add('hide');
   if(!bubbles.length)for(let i=0;i<45;i++)bubbles.push({x:rnd(0,W),y:rnd(0,H),r:rnd(2,7),s:rnd(15,45),p:rnd(0,6)});
 }
@@ -105,39 +105,44 @@ function dust(x,y,n){for(let i=0;i<n;i++)parts.push({k:'d',x:x+rnd(-90,90),y:y+r
 
 /* ---------- garg AI ---------- */
 const scaleAt=y=>1.02+(y-GY0)/(GY1-GY0)*.16;
-const hpR=()=>G.hp/G.max,speedMul=()=>1+(1-hpR())*.8,phase=()=>hpR()<.33?3:hpR()<.66?2:1;
+const hpR=()=>G.hp/G.max,speedMul=()=>1+(1-hpR())*.8,atkMul=()=>Math.min(speedMul(),1.35),phase=()=>hpR()<.33?3:hpR()<.66?2:1;
+const slashAngles=()=>phase()>=2?[-.24,.24]:[0],slashH=sc=>(phase()>=2?128:150)*sc/1.1;   // fan = two slashes with a safe lane between them
 function setState(s,t){G.state=s;G.timer=t;G.lastAct=s}
 function nextAction(){const ph=phase(),la=G.lastAct;
-  const opts=[['attack',30],['spit',24],['wave',ph>=2||hpR()<.9?17:0],['jump',15],['walk',11],['groan',5]].map(o=>[o[0],o[0]===la?o[1]*.2:o[1]]);
+  const busyW=waves.length>0,busyC=clouds.length>0||bombs.length>0,busyS=slashes.length>0;
+  const opts=[['attack',busyW||busyC?0:30],['spit',busyW||busyS?0:24],['wave',busyC||busyS||busyW?0:(ph>=2||hpR()<.9?17:0)],['jump',15],['walk',11],['groan',5]].map(o=>[o[0],o[0]===la?o[1]*.2:o[1]]);
   let r=Math.random()*opts.reduce((a,o)=>a+o[1],0);for(const[n,w]of opts){if((r-=w)<=0)return({attack:startAttack,spit:startSpit,wave:startWave,jump:startJump,walk:startWalk,groan:startGroan})[n]()}startAttack()}
 function afterAction(){const m=speedMul();setState('idle',(phase()===3&&Math.random()<.4?.12:rnd(.35,.85))/m)}
-function startAttack(){setState('attack',1.25/speedMul());G.atk=0;G.atkFired=false;SFX.wind()}
+function startAttack(){setState('attack',1.3/atkMul());G.atk=0;G.atkFired=false;SFX.wind()}
 function startWalk(){G.tx=clamp(G.x+(Math.random()<.5?-1:1)*rnd(90,220),GX0,GX1);if(Math.abs(G.tx-G.x)<40)G.tx=G.x>1040?GX0+30:GX1-30;setState('walk',4)}
 function startJump(){let ny;do{ny=rnd(GY0,GY1)}while(Math.abs(ny-G.y)<90);G.ty=ny;G.tx=rnd(GX0+20,GX1-20);G.sx=G.x;G.sy=G.y;G.j=0;setState('jump',0);SFX.jump()}
 function startGroan(){setState('groan',1.8);groanSound()}
-function startSpit(){setState('spit',1.7/speedMul());G.spit=0;G.spitFired=false;G.spitQ=[];say('INK BOMBS!','#c58bff');SFX.wind()}
+function startSpit(){setState('spit',1.7/atkMul());G.spit=0;G.spitFired=false;G.spitQ=[];say('INK BOMBS!','#c58bff');SFX.wind()}
 function startWave(){setState('wave',0);G.j=0;G.slammed=false;G.wavesLeft=phase()===1?1:phase()===2?2:3;say('TIDAL WAVE!','#4de8ff');SFX.wind()}
 
 function fireSlash(){
-  const sc=scaleAt(G.y),ph=phase(),lane=G.y-G.lift-95*sc,tipX=G.x-240*sc,sp=560+(1-hpR())*210,ang=ph>=2?[-.2,0,.2]:[0];
+  const sc=scaleAt(G.y),ph=phase(),lane=G.y-G.lift-95*sc,tipX=G.x-240*sc,sp=520+(1-hpR())*150,ang=slashAngles();
   SFX.slash();shake=Math.max(shake,12);ring(tipX,lane,150,'rgba(255,255,255,',.5,8);spark(tipX,lane,22,'#bff6ff',420,5,.6);
-  ang.forEach(a=>slashes.push({x:tipX,y:lane,vx:-Math.cos(a)*sp,vy:Math.sin(a)*sp,a,h:150*sc/1.1,l:4,hit:false}));
+  ang.forEach(a=>slashes.push({x:tipX,y:lane,vx:-Math.cos(a)*sp,vy:Math.sin(a)*sp,a,h:slashH(sc),l:4,hit:false}));
 }
 function queueBombs(){
-  const n=[3,4,5][phase()-1],py=clamp(P.y+P.vy*.55,100,640);
-  for(let i=0;i<n;i++){const off=i===0?0:(i%2?1:-1)*Math.ceil(i/2)*118;G.spitQ.push({d:i*.2,ty:clamp(py+off+rnd(-15,15),90,650),tx:PX+rnd(-10,45)})}
+  const n=[2,3,3][phase()-1],py=clamp(P.y+P.vy*.5,110,630),gap=265,ys=[py];       // bombs are 265px apart: you can always squeeze between or around them
+  const dir=py+gap<=650?1:-1;if(n>1)ys.push(py+dir*gap);if(n>2&&py-dir*gap>=90&&py-dir*gap<=650)ys.push(py-dir*gap);
+  ys.forEach((y,i)=>G.spitQ.push({d:i*.26,ty:y+rnd(-12,12),tx:PX+rnd(-10,40)}));
 }
 function launchBomb(q){
   const sc=scaleAt(G.y),x0=G.x-95*sc,y0=G.y-G.lift-175*sc;SFX.spit();
   bombs.push({x0,y0,x:x0,y:y0,tx:q.tx,ty:q.ty,t:0,T:1.05,spin:rnd(0,6)});spark(x0,y0,12,'#c58bff',300,5,.5);spark(x0,y0,8,'#ff5fa2',220,4,.4);
 }
 function landBomb(b){
-  SFX.ink();shake=Math.max(shake,9);clouds.push({x:b.tx,y:b.ty,l:3.8,m:3.8,r:72,tick:.2,rot:rnd(0,6.28)});
+  SFX.ink();shake=Math.max(shake,9);clouds.push({x:b.tx,y:b.ty,l:3.2,m:3.2,r:68,tick:.2,rot:rnd(0,6.28)});
   spark(b.tx,b.ty,34,'#9a4dff',420,6,.7);spark(b.tx,b.ty,18,'#ff5fa2',320,5,.6);ring(b.tx,b.ty,130,'rgba(180,110,255,',.55,7);
 }
 function spawnWave(){
-  const sc=scaleAt(G.y),ph=phase(),h=[215,195,180][ph-1],gc=rnd(190,560);
-  waves.push({x:G.x-190*sc,gc,h,vx:-(335+(1-hpR())*90),t:0,amp:ph===3?rnd(70,110):0,hit:false,ph:rnd(0,6)});
+  const sc=scaleAt(G.y),ph=phase(),h=[235,218,205][ph-1];
+  let gc=rnd(200,550);if(G.lastGap!=null&&waves.length+G.wavesLeft>0&&G.wavesLeft<(ph===1?1:ph===2?2:3)){gc=clamp(G.lastGap+(Math.random()<.5?-1:1)*rnd(110,220),200,550);}
+  G.lastGap=gc;
+  waves.push({x:G.x-190*sc,gc,h,vx:-(300+(1-hpR())*70),t:0,amp:ph===3?rnd(45,75):0,hit:false,ph:rnd(0,6)});
   SFX.wave();shake=Math.max(shake,16);flash=Math.max(flash,.25);
 }
 function updateGarg(dt){
@@ -150,18 +155,18 @@ function updateGarg(dt){
   else if(G.state==='walk'){const dx=G.tx-G.x,step=Math.sign(dx)*Math.min(Math.abs(dx),150*m*dt);walking=1;const old=Math.sin(G.walkPhase);G.x+=step;G.walkPhase+=Math.abs(step)*.062;
     if(old*Math.sin(G.walkPhase)<0)stepSound();if(Math.abs(G.tx-G.x)<2)afterAction()}
   else if(G.state==='groan'){G.timer-=dt;G.groan=Math.sin(clamp((1.8-G.timer)/1.8,0,1)*Math.PI);if(G.timer<=0){G.groan=0;afterAction()}}
-  else if(G.state==='attack'){G.atk+=dt/(1.25/m);if(G.atk>=.57&&!G.atkFired){G.atkFired=true;fireSlash()}
+  else if(G.state==='attack'){G.atk+=dt/(1.3/atkMul());if(G.atk>=.57&&!G.atkFired){G.atkFired=true;fireSlash()}
     if(G.atk>=1){G.atk=-1;if(phase()>=3&&!G.seq){G.seq=1;startAttack()}else{G.seq=0;afterAction()}}}
-  else if(G.state==='spit'){G.spit+=dt/(1.7/m);if(G.spit>=.5&&!G.spitFired){G.spitFired=true;queueBombs()}
+  else if(G.state==='spit'){G.spit+=dt/(1.7/atkMul());if(G.spit>=.5&&!G.spitFired){G.spitFired=true;queueBombs()}
     for(let i=G.spitQ.length-1;i>=0;i--){G.spitQ[i].d-=dt;if(G.spitQ[i].d<=0){launchBomb(G.spitQ[i]);G.spitQ.splice(i,1)}}
     if(G.spit>=1){G.spit=-1;afterAction()}}
-  else if(G.state==='wave'){G.j+=dt;const c=.32/m,l=.5/m,sl=.11,r=.5;
-    if(G.j<c){G.squash=ease(G.j/c);G.atk=0}
+  else if(G.state==='wave'){G.j+=dt;const am=atkMul(),c=.32/am,l=.5/am,sl=.11,r=.5;
+    if(G.j<c){G.squash=ease(clamp(G.j/c,0,1));G.atk=0}
     else if(G.j<c+l){const u=(G.j-c)/l;G.squash=lerp(G.squash,-.3,.3);G.air=1;G.lift=Math.sin(u*Math.PI/2)*150;G.atk=u*.5}
     else if(G.j<c+l+sl){const u=(G.j-c-l)/sl;G.lift=150*(1-u*u);G.atk=.5+u*.14;G.air=1-u}
     else{if(!G.slammed){G.slammed=true;G.lift=0;G.air=0;G.squash=1;SFX.land();ring(G.x,G.y,300,'rgba(120,230,255,',.8,12);dust(G.x,G.y,26);spawnWave();shake=Math.max(shake,26)}
       const u=clamp((G.j-c-l-sl)/r,0,1);G.squash=lerp(1,0,ease(u));G.atk=.64+u*.36;
-      if(u>=1){G.atk=-1;G.slammed=false;if(--G.wavesLeft>0){G.j=c*.55;G.squash=0}else afterAction()}}}
+      if(u>=1){G.atk=-1;G.slammed=false;if(--G.wavesLeft>0){G.j=-.45;G.squash=0}else afterAction()}}}
   else if(G.state==='jump'){G.j+=dt;const crouch=.34/m,air=.8/m,land=.28;
     if(G.j<crouch){G.squash=ease(G.j/crouch)}
     else if(G.j<crouch+air){const u=(G.j-crouch)/air;G.squash=lerp(G.squash,-.4,.3);G.air=Math.sin(u*Math.PI);G.x=lerp(G.sx,G.tx,ease(u));G.y=lerp(G.sy,G.ty,ease(u));G.lift=Math.sin(u*Math.PI)*185;if(u>.85)G.landed=true}
@@ -236,19 +241,19 @@ function update(dt,rdt){
   for(let i=slashes.length-1;i>=0;i--){const s=slashes[i];s.x+=s.vx*dt;s.y+=s.vy*dt;s.l-=dt;
     if(Math.random()<.9)parts.push({k:'s',x:s.x+rnd(-10,40),y:s.y+rnd(-s.h/2,s.h/2),vx:rnd(0,120),vy:rnd(-30,30),l:.35,m:.35,z:rnd(3,7),c:'#9fefff'});
     if(s.x<-150||s.l<=0){slashes.splice(i,1);continue}
-    if(!s.hit&&P&&!P.dead&&P.inv<=0&&Math.abs(s.x-PX)<46&&Math.abs(s.y-P.y)<s.h/2+48){s.hit=true;hurtPlayer(phase()===3?22:17)}}
+    if(!s.hit&&P&&!P.dead&&P.inv<=0&&Math.abs(s.x-PX)<46&&Math.abs(s.y-P.y)<s.h/2+40){s.hit=true;hurtPlayer(phase()===3?22:17)}}
   // ink bombs + clouds
   for(let i=bombs.length-1;i>=0;i--){const b=bombs[i];b.t+=dt;const u=Math.min(1,b.t/b.T);b.x=lerp(b.x0,b.tx,u);b.y=lerp(b.y0,b.ty,u)-Math.sin(u*Math.PI)*200;b.spin+=dt*9;
     if(Math.random()<.8)parts.push({k:'s',x:b.x,y:b.y,vx:rnd(-30,30),vy:rnd(-30,30),l:.4,m:.4,z:rnd(4,8),c:Math.random()<.5?'#9a4dff':'#ff5fa2'});
     if(u>=1){landBomb(b);bombs.splice(i,1)}}
   for(let i=clouds.length-1;i>=0;i--){const c=clouds[i];c.l-=dt;c.rot+=dt*.6;if(c.l<=0){clouds.splice(i,1);continue}
     if(Math.random()<.35)parts.push({k:'s',x:c.x+rnd(-c.r,c.r)*.8,y:c.y+rnd(-c.r,c.r)*.8,vx:0,vy:-60,l:.7,m:.7,z:rnd(3,7),c:'#b46bff'});
-    c.tick-=dt;if(c.tick<=0&&P&&!P.dead&&P.inv<=0&&Math.hypot(P.y-c.y,(PX-c.x)*1.2)<c.r+38&&c.l<c.m-.25){c.tick=.55;hurtPlayer(9,true)}else if(c.tick<=0)c.tick=.1}
+    c.tick-=dt;if(c.tick<=0&&P&&!P.dead&&P.inv<=0&&Math.hypot(P.y-c.y,(PX-c.x)*1.2)<c.r+28&&c.l<c.m-.3){c.tick=.55;hurtPlayer(9,true)}else if(c.tick<=0)c.tick=.1}
   // tidal waves
   for(let i=waves.length-1;i>=0;i--){const w=waves[i];w.x+=w.vx*dt;w.t+=dt;const gcNow=w.gc+w.amp*Math.sin(w.t*2.4+w.ph);w.top=gcNow-w.h/2;w.bot=gcNow+w.h/2;
     if(Math.random()<.9)parts.push({k:'s',x:w.x+rnd(-50,40),y:rnd(0,H),vx:rnd(-40,40),vy:-rnd(20,80),l:.6,m:.6,z:rnd(3,7),c:Math.random()<.5?'#bff6ff':'#4de8ff'});
     if(w.x<-150){waves.splice(i,1);continue}
-    if(!w.hit&&P&&!P.dead&&P.inv<=0&&Math.abs(w.x-PX)<62&&(P.y-52<w.top||P.y+52>w.bot)){w.hit=true;SFX.waveHit();ring(PX,P.y,200,'rgba(120,230,255,',.6,12);spark(PX,P.y,40,'#bff6ff',600,6,.8);hurtPlayer(24)}}
+    if(!w.hit&&P&&!P.dead&&P.inv<=0&&Math.abs(w.x-PX)<62&&(P.y-46<w.top||P.y+46>w.bot)){w.hit=true;SFX.waveHit();ring(PX,P.y,200,'rgba(120,230,255,',.6,12);spark(PX,P.y,40,'#bff6ff',600,6,.8);hurtPlayer(24)}}
   // particles + debris
   for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.l-=dt;if(p.l<=0){parts.splice(i,1);continue}
     if(p.k==='r')p.r=lerp(p.r,p.R,1-Math.pow(.001,dt));
@@ -332,8 +337,8 @@ function drawGarg(){
   GargRig.draw(ctx,p,G.x,gy,sc,G.flash);
 }
 function drawTelegraph(){
-  if(G.state==='attack'&&G.atk>=.04&&G.atk<.57){const sc=scaleAt(G.y),lane=G.y-G.lift-95*sc,tipX=G.x-240*sc,h=150*sc/1.1,pul=.5+.5*Math.sin(time*22),a=ease(clamp((G.atk-.04)/.3,0,1));
-    (phase()>=2?[-.2,0,.2]:[0]).forEach(an=>{ctx.save();ctx.translate(tipX,lane);ctx.rotate(Math.PI-an);const g=ctx.createLinearGradient(0,0,tipX+200,0);g.addColorStop(0,`rgba(255,70,90,${(.32+pul*.2)*a})`);g.addColorStop(1,'rgba(255,70,90,0)');
+  if(G.state==='attack'&&G.atk>=.04&&G.atk<.57){const sc=scaleAt(G.y),lane=G.y-G.lift-95*sc,tipX=G.x-240*sc,h=slashH(sc),pul=.5+.5*Math.sin(time*22),a=ease(clamp((G.atk-.04)/.3,0,1));
+    slashAngles().forEach(an=>{ctx.save();ctx.translate(tipX,lane);ctx.rotate(Math.PI-an);const g=ctx.createLinearGradient(0,0,tipX+200,0);g.addColorStop(0,`rgba(255,70,90,${(.32+pul*.2)*a})`);g.addColorStop(1,'rgba(255,70,90,0)');
       ctx.fillStyle=g;ctx.fillRect(0,-h/2,tipX+260,h);ctx.strokeStyle=`rgba(255,120,140,${.5*a})`;ctx.lineWidth=2;ctx.setLineDash([14,12]);ctx.strokeRect(0,-h/2,tipX+260,h);ctx.restore()})}
   // ink bomb landing markers
   for(const b of bombs){const u=b.t/b.T,pul=.5+.5*Math.sin(time*18);ctx.save();ctx.translate(b.tx,b.ty);ctx.strokeStyle=`rgba(190,110,255,${.35+.4*u})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,72*(1.25-.25*u),0,6.3);ctx.stroke();
